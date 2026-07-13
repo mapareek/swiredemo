@@ -169,7 +169,7 @@ export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPh
               </h1>
             </div>
             <p className="text-xs text-slate-500 mt-1 truncate">
-              Bottler Swire - {store.storeName}
+              {store.storeName}
             </p>
           </div>
         </div>
@@ -355,6 +355,10 @@ export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPh
 
           {step === "RECOMMENDATION" && (
             <section className="space-y-4">
+              <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-bold">
+                Lift estimates compare the recommended execution against a no-activation baseline for this store and period.
+              </div>
+
               <div className="bg-white border border-slate-200 rounded shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Recommended Mix</span>

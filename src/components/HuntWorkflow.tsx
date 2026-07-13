@@ -161,7 +161,7 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
               </h1>
             </div>
             <p className="text-xs text-slate-500 mt-1 truncate">
-              Bottler Swire - {store.storeName} - Ranked net-new display opportunities
+              {store.storeName} - Ranked net-new display opportunities
             </p>
           </div>
         </div>
@@ -235,6 +235,10 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
             <span className="text-xs text-slate-500 font-mono">
               {filteredOpportunities.length} shown / {opportunities.length} total
             </span>
+          </div>
+
+          <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-bold">
+            Lift estimates compare the recommended execution against a no-activation baseline for this store and period.
           </div>
 
           {filteredOpportunities.length === 0 ? (
