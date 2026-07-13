@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { FlowType, Screen, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
+import { FlowLiftMetrics, FlowType, Screen, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
 import { ArrowLeft, ArrowRight, EyeOff, Filter, MapPin } from "lucide-react";
 
 interface HuntWorkflowProps {
   store: StoreInfo;
   onBackToHub: () => void;
-  onSelectAction: (nextScreen: Screen, flowType: FlowType) => void;
+  onSelectAction: (nextScreen: Screen, flowType: FlowType, metrics?: FlowLiftMetrics) => void;
 }
 
 type CandidateWithBox = PicOSOptimizationCandidate & {
@@ -319,7 +319,10 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
 
                     <div className="mt-4 flex justify-end">
                       <button
-                        onClick={() => onSelectAction(Screen.BEFORE_PHOTO, "HUNT_SPACE")}
+                        onClick={() => onSelectAction(Screen.BEFORE_PHOTO, "HUNT_SPACE", {
+                          liftPct: opportunity.bestLiftPct,
+                          opportunityUnits: opportunity.totalUnits
+                        })}
                         className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-2"
                       >
                         Start Hunt <ArrowRight className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FlowType, Screen, PicOSConstraints, OptimizeConstraints, RemovalSurveyResult, StoreInfo } from "./types";
+import { FlowLiftMetrics, FlowType, Screen, PicOSConstraints, OptimizeConstraints, RemovalSurveyResult, StoreInfo } from "./types";
 import { DEFAULT_STORE } from "./data/picosStores";
 import StoreSelector from "./components/StoreSelector";
 import StoreActionHub from "./components/StoreActionHub";
@@ -23,6 +23,7 @@ export default function App() {
   const [flowType, setFlowType] = useState<FlowType>("EXECUTE_PICOS");
   const [picosConstraints, setPicosConstraints] = useState<PicOSConstraints | null>(null);
   const [optimizeConstraints, setOptimizeConstraints] = useState<OptimizeConstraints | null>(null);
+  const [flowLiftMetrics, setFlowLiftMetrics] = useState<FlowLiftMetrics | null>(null);
   const [removalSurvey, setRemovalSurvey] = useState<RemovalSurveyResult | null>(null);
   
   // Toast Alert Notification state
@@ -44,6 +45,7 @@ export default function App() {
     setSelectedStore(store);
     setPicosConstraints(null);
     setOptimizeConstraints(null);
+    setFlowLiftMetrics(null);
     setRemovalSurvey(null);
     setCurrentScreen(Screen.ACTION_HUB);
     triggerToast(`Store Visit Session Commenced successfully at ${store.storeName}`);
@@ -62,8 +64,9 @@ export default function App() {
   };
 
   // Hunt actions to proceed directly into photo captures
-  const handleHuntSelectAction = (nextScreen: Screen, selectedFlow: FlowType) => {
+  const handleHuntSelectAction = (nextScreen: Screen, selectedFlow: FlowType, metrics?: FlowLiftMetrics) => {
     setFlowType(selectedFlow);
+    setFlowLiftMetrics(metrics || null);
     setCurrentScreen(selectedFlow === "EXECUTE_PICOS" ? Screen.EXECUTE_PICOS : selectedFlow === "HUNT_SPACE" ? Screen.AFTER_PHOTO : nextScreen);
     triggerToast(`Initiating ${selectedFlow === "HUNT_SPACE" ? "Hunt Space Capture" : selectedFlow === "EXECUTE_PICOS" ? "PicOS Execution" : "SKU Optimization"}`);
   };
@@ -72,6 +75,7 @@ export default function App() {
   const handleProceedToOptimizePhoto = (selectedFlow: "OPTIMIZE_DISPLAY", constraints: OptimizeConstraints) => {
     setFlowType(selectedFlow);
     setOptimizeConstraints(constraints);
+    setFlowLiftMetrics(null);
     setCurrentScreen(Screen.AFTER_PHOTO);
   };
 
@@ -79,6 +83,7 @@ export default function App() {
   const handleProceedToPicosAfterPhoto = (constraints: PicOSConstraints) => {
     setFlowType("EXECUTE_PICOS");
     setPicosConstraints(constraints);
+    setFlowLiftMetrics(null);
     setRemovalSurvey(null);
     setCurrentScreen(Screen.AFTER_PHOTO);
   };
@@ -122,6 +127,7 @@ export default function App() {
     setCurrentScreen(Screen.STORE_SELECTOR);
     setPicosConstraints(null);
     setOptimizeConstraints(null);
+    setFlowLiftMetrics(null);
     setRemovalSurvey(null);
   };
 
@@ -207,6 +213,8 @@ export default function App() {
           store={selectedStore}
           flowType={flowType}
           picosConstraints={picosConstraints}
+          optimizeConstraints={optimizeConstraints}
+          flowLiftMetrics={flowLiftMetrics}
           removalSurvey={removalSurvey}
           onFinish={handleFinishWorkflow}
           onCloseVisit={handleCloseVisitSession}

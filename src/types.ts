@@ -12,6 +12,11 @@ export enum Screen {
 
 export type FlowType = "EXECUTE_PICOS" | "OPTIMIZE_DISPLAY" | "HUNT_SPACE";
 
+export interface FlowLiftMetrics {
+  liftPct: number;
+  opportunityUnits?: number;
+}
+
 export interface StoreInfo {
   id: string;
   routeId: string;

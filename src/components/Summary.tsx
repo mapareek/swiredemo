@@ -1,10 +1,13 @@
-import { FlowType, IMAGES, PicOSConstraints, RemovalSurveyResult, StoreInfo } from "../types";
+import { FlowLiftMetrics, FlowType, IMAGES, OptimizeConstraints, PicOSConstraints, RemovalSurveyResult, StoreInfo } from "../types";
+import { getStoreSignalOptimizeRecommendation } from "../utils/storeSignalEngine";
 import { Check, CheckCircle, TrendingUp } from "lucide-react";
 
 interface SummaryProps {
   store: StoreInfo;
   flowType: FlowType;
   picosConstraints?: PicOSConstraints | null;
+  optimizeConstraints?: OptimizeConstraints | null;
+  flowLiftMetrics?: FlowLiftMetrics | null;
   removalSurvey?: RemovalSurveyResult | null;
   onFinish: () => void;
   onCloseVisit: () => void;
@@ -42,10 +45,37 @@ function signedUnits(value: number) {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)} units`;
 }
 
-export default function Summary({ store, flowType, picosConstraints, removalSurvey, onFinish, onCloseVisit }: SummaryProps) {
+function optimizeLiftMetrics(store: StoreInfo, optimizeConstraints?: OptimizeConstraints | null) {
+  if (!optimizeConstraints) return { liftPct: 0, opportunityUnits: 0 };
+  const result = getStoreSignalOptimizeRecommendation(store, optimizeConstraints, optimizeConstraints.currentProducts);
+  return {
+    liftPct: result.liftPercent,
+    opportunityUnits: result.skus.reduce((sum, sku) => sum + sku.salesDelta, 0)
+  };
+}
+
+export default function Summary({
+  store,
+  flowType,
+  picosConstraints,
+  optimizeConstraints,
+  flowLiftMetrics,
+  removalSurvey,
+  onFinish,
+  onCloseVisit
+}: SummaryProps) {
   const executionLift = planLiftMetrics(picosConstraints);
-  const lift = flowType === "EXECUTE_PICOS" ? executionLift.liftPct : 24;
-  const liftUnits = flowType === "EXECUTE_PICOS" ? executionLift.opportunityUnits : undefined;
+  const optimizeLift = optimizeLiftMetrics(store, optimizeConstraints);
+  const summaryLift = flowType === "EXECUTE_PICOS"
+    ? executionLift
+    : flowType === "HUNT_SPACE"
+      ? {
+        liftPct: flowLiftMetrics?.liftPct || 0,
+        opportunityUnits: flowLiftMetrics?.opportunityUnits || 0
+      }
+      : optimizeLift;
+  const lift = summaryLift.liftPct;
+  const liftUnits = summaryLift.opportunityUnits;
   const flowLabel = flowType === "EXECUTE_PICOS"
     ? "PicOS Picture of Success Standard"
     : flowType === "HUNT_SPACE"
