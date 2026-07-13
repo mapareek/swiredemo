@@ -1,0 +1,302 @@
+[
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 1",
+    "semantic_fields": {
+      "pack_size_status": "Explicit",
+      "pack_sizes_stated": "1.25L; 7.5oz; 10pk"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 5",
+    "semantic_fields": {
+      "location": "Display area",
+      "location_guidance": "Action Alley; pallet; floor stack",
+      "pack_sizes_stated": "12oz; 24pk"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 8",
+    "semantic_fields": {
+      "display_type": "Display",
+      "location": "Display area",
+      "location_guidance": "Hanging rack; wing rack; cooler; HRACK"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 9",
+    "semantic_fields": {
+      "location_guidance": "Stack base; half stack; end cap"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 10",
+    "semantic_fields": {
+      "display_type": "Display",
+      "location": "Display area",
+      "location_guidance": "Shared end cap; cooler; wing rack",
+      "pack_sizes_stated": "12oz"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 13",
+    "semantic_fields": {
+      "location_guidance": "Stack base; half stack; end cap"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 14",
+    "semantic_fields": {
+      "pack_sizes_stated": "20oz",
+      "location_guidance": "End cap; wing rack; half stack; cold placement"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 16",
+    "semantic_fields": {
+      "location": "Display area",
+      "location_guidance": "Dump Bin; PDQ Bin"
+    }
+  },
+  {
+    "source_file": "P-001110_WAL-MART STORES INC CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 17",
+    "semantic_fields": {
+      "location": "Garden Center",
+      "location_guidance": "Garden Center split pallet"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 1",
+    "semantic_fields": {
+      "pack_sizes_stated": "500ml; 6pk",
+      "skus_stated": "Coke; Coke Zero; Sprite; Fanta"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 3",
+    "semantic_fields": {
+      "skus_stated": "Coke; Coke Zero; Sprite; Fanta"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 5",
+    "semantic_fields": {
+      "skus_stated": "Coke; Coke Zero; Sprite; Fanta"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 6",
+    "semantic_fields": {
+      "skus_stated": "Coke; Coke Zero; Sprite; Fanta"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 7",
+    "semantic_fields": {
+      "display_type": "Display",
+      "location": "Perimeter",
+      "location_guidance": "Perimeter portfolio display; end cap",
+      "skus_stated": "Fanta; Coke; Coke Zero; Sprite"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 8",
+    "semantic_fields": {
+      "skus_stated": "Sprite + Tea"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 9",
+    "semantic_fields": {
+      "skus_stated": "Sprite + Tea"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 10",
+    "semantic_fields": {
+      "display_type": "Display",
+      "location": "Endcap",
+      "location_guidance": "Endcap front of store or middle; ambient display; cooler display",
+      "skus_stated": "Coke; Sprite + Tea"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 11",
+    "semantic_fields": {
+      "display_type": "Display",
+      "location": "Endcap",
+      "location_guidance": "Destination Coke ambient endcap; front of store; middle; cooler display"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Box 31",
+    "semantic_fields": {
+      "pack_size_status": "Explicit",
+      "pack_sizes_stated": "20oz; 8pk",
+      "location": "Aisle",
+      "location_guidance": "Water set over 12ft"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 15",
+    "semantic_fields": {
+      "skus_stated": "Smartwater"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 16",
+    "semantic_fields": {
+      "display_type": "Display",
+      "location": "Perimeter",
+      "location_guidance": "Perimeter portfolio display; End Cap; Marketing kit header",
+      "skus_stated": "Fanta; Coke; Coke Zero; Sprite"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Late Break 17",
+    "semantic_fields": {
+      "skus_stated": "Coke; Coke Zero; Sprite; Fanta",
+      "pack_size_status": "Inferred",
+      "pack_sizes_stated": "12oz; 12pk"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Box 35",
+    "semantic_fields": {
+      "location_guidance": "Beverage aisle; Destination Coke Endcap; Perm endcaps; LTL FlexSpace"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Sheet 20",
+    "semantic_fields": {
+      "skus_stated": "Coke; Coke Zero; Sprite; Fanta"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Box 37",
+    "semantic_fields": {
+      "location_guidance": "Beverage aisle; Destination Coke Endcap; Perm endcaps; LTL FlexSpace"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Box 38",
+    "semantic_fields": {
+      "skus_stated": "Gold Peak; Smartwater; Vitamin Water"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Box 39",
+    "semantic_fields": {
+      "skus_stated": "Smartwater"
+    }
+  },
+  {
+    "source_file": "P-000727_FAMILY DOLLAR CCNA_7-1-7-31.pdf",
+    "box": "Sell Box 42",
+    "semantic_fields": {
+      "pack_size_status": "Explicit",
+      "pack_sizes_stated": "20oz; 8pk",
+      "location": "Aisle",
+      "location_guidance": "Water set over 11ft"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Sell Sheet 1",
+    "semantic_fields": {
+      "pack_size_status": "Explicit",
+      "pack_sizes_stated": "12pk; 15pk"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Sell Sheet 2",
+    "semantic_fields": {
+      "skus_stated": "Coca-Cola; Coke Zero"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Sell Sheet 3",
+    "semantic_fields": {
+      "pack_size_status": "Inferred",
+      "pack_sizes_stated": "Mini Can"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Sell Sheet 4",
+    "semantic_fields": {
+      "sku_status": "Explicit",
+      "skus_stated": "fairlife",
+      "location": "Cooler",
+      "location_guidance": "Cold Vault"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "OnAd 6",
+    "semantic_fields": {
+      "sku_status": "Explicit",
+      "skus_stated": "Vitamin Water"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Execute Box 51",
+    "semantic_fields": {
+      "location": "Cooler",
+      "location_guidance": "Forecourt; cold vault; pizza warmer"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Sell Sheet 11",
+    "semantic_fields": {
+      "location": "Cooler",
+      "location_guidance": "Cold Vault"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Sell Sheet 12",
+    "semantic_fields": {
+      "skus_stated": "Coke; Coke Zero; Sprite; Smartwater; Core Power"
+    }
+  },
+  {
+    "source_file": "P-004830_CIRCLE K GREAT LAKES CCNA_7-1-9-1.pdf",
+    "box": "Sell Sheet 13",
+    "semantic_fields": {
+      "pack_size_status": "Inferred",
+      "pack_sizes_stated": "Mini Can",
+      "location_guidance": "Entryway Cooler"
+    }
+  }
+]

@@ -1,0 +1,317 @@
+﻿{
+  "summary": {
+    "totalActivities": 56,
+    "activitiesWithCandidates": 56,
+    "activitiesWithLockedSkus": 46,
+    "totalLockedSkus": 81,
+    "lockedWithAnyModelMatch": 56,
+    "lockedVisibleInBaseRecommendation": 55,
+    "lockedNoModelMatch": 25,
+    "lockedMatchedButNotVisibleInBase": 1,
+    "variableActivitiesWithoutCandidates": 0
+  },
+  "gaps": [
+    {
+      "store": "Walmart Sc 5189",
+      "box": "Sell Sheet 8",
+      "mode": "Sell",
+      "activity": "Sell: BODYARMOR 20oz Flash IV $1.98 ROLLBACK",
+      "packSizesStated": "20oz",
+      "lockedSkus": [
+        "BODYARMOR 20OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "BODYARMOR 20OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Walmart Sc 5189",
+      "box": "Sell Sheet 9",
+      "mode": "Sell",
+      "activity": "SELL: BODYARMOR 16oz $1 Rollback - LATE BREAK",
+      "packSizesStated": "16oz",
+      "lockedSkus": [
+        "BODYARMOR 16OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "BODYARMOR 16OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Walmart Sc 5189",
+      "box": "Sell Sheet 10",
+      "mode": "Sell",
+      "activity": "Sell: BODYARMOR 12oz FIT $1.98 ROLLBACK Product Innovation",
+      "packSizesStated": "12oz",
+      "lockedSkus": [
+        "BODYARMOR 12OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "BODYARMOR 12OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Walmart Sc 5189",
+      "box": "Sell Sheet 11",
+      "mode": "Sell",
+      "activity": "Smartwater 1L 6 pack Rollback",
+      "packSizesStated": "1L; 6 pack",
+      "lockedSkus": [
+        "SMARTWATER 6PK"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "SMARTWATER 6PK"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Walmart Sc 5189",
+      "box": "Sell Sheet 15",
+      "mode": "Sell",
+      "activity": "SELL: BODYARMOR 1L6pk SportWater $8.48 Rollback",
+      "packSizesStated": "1L; 6pk",
+      "lockedSkus": [
+        "BODYARMOR 6PK"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "BODYARMOR 6PK"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Walmart Sc 5189",
+      "box": "Sell Sheet 17",
+      "mode": "Sell",
+      "activity": "SELL: Back to College 250 Bodyarmor 12oz Fit + 20oz Flash IV",
+      "packSizesStated": "12oz; 20oz",
+      "lockedSkus": [
+        "BODYARMOR 20OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "BODYARMOR 20OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Family Dollar 11796",
+      "box": "Sell Sheet 10",
+      "mode": "Execute",
+      "activity": "Destination Coke/Ambient Endcap",
+      "packSizesStated": "Not explicitly stated",
+      "lockedSkus": [
+        "COKE",
+        "SPRITE + TEA"
+      ],
+      "candidateCount": 96,
+      "missingAnywhere": [],
+      "matchedButNotVisible": [
+        "COKE"
+      ]
+    },
+    {
+      "store": "Family Dollar 11796",
+      "box": "Sell Sheet 13",
+      "mode": "Sell",
+      "activity": "SELL: BODYARMOR & POWERADE Seasonal End Cap",
+      "packSizesStated": "16oz; 28oz",
+      "lockedSkus": [
+        "BODYARMOR 16OZ 28OZ",
+        "POWERADE 16OZ 28OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "BODYARMOR 16OZ 28OZ",
+        "POWERADE 16OZ 28OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Family Dollar 11796",
+      "box": "Sell Sheet 15",
+      "mode": "Sell",
+      "activity": "Smartwater FEM Cooler Toppers",
+      "packSizesStated": "20oz",
+      "lockedSkus": [
+        "SMARTWATER 20OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "SMARTWATER 20OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Family Dollar 11796",
+      "box": "Sell Box 38",
+      "mode": "Sell",
+      "activity": "Sheet Isotonic 2/$4 GP,SW, VW Ad: 18.5oz GP, 700ml SW, 20oz VW Retail: 2/$4.00 MB2 Execute",
+      "packSizesStated": "18.5oz; 20oz",
+      "lockedSkus": [
+        "GOLD PEAK 18.5OZ",
+        "SMARTWATER 700ml",
+        "VITAMIN WATER 20OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "GOLD PEAK 18.5OZ",
+        "SMARTWATER 700ml",
+        "VITAMIN WATER 20OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Family Dollar 11796",
+      "box": "Sell Box 39",
+      "mode": "Sell",
+      "activity": "Sheet SW 1L Ad:1L SW Retail: 2/$4.50 MB2 Execute: Beverage Aisle, Wall Cooler, Destination",
+      "packSizesStated": "1L",
+      "lockedSkus": [
+        "SMARTWATER 1L"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "SMARTWATER 1L"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Family Dollar 11796",
+      "box": "Sell Box 40",
+      "mode": "Sell",
+      "activity": "1/1 - 2/1 U-Boat Coke UBoat should be execute in backroom of every sto",
+      "packSizesStated": "Not explicitly stated",
+      "lockedSkus": [
+        "COKE",
+        "DR PEPPER"
+      ],
+      "candidateCount": 100,
+      "missingAnywhere": [
+        "DR PEPPER"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Family Dollar 11796",
+      "box": "Sell Box 41",
+      "mode": "Sell",
+      "activity": "6/1 - 2/1 U-Boat Coke UBoat should be execute in backroom of every sto",
+      "packSizesStated": "Not explicitly stated",
+      "lockedSkus": [
+        "COKE",
+        "DR PEPPER"
+      ],
+      "candidateCount": 100,
+      "missingAnywhere": [
+        "DR PEPPER"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Circle K 2708833",
+      "box": "Sell Sheet 4",
+      "mode": "Execute",
+      "activity": "Milks + Cookie Combo Food Bundle",
+      "packSizesStated": "Not explicitly stated",
+      "lockedSkus": [
+        "FAIRLIFE"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "FAIRLIFE"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Circle K 2708833",
+      "box": "OnAd 5",
+      "mode": "Execute",
+      "activity": "NEW! Reduced 2L Retail",
+      "packSizesStated": "2L",
+      "lockedSkus": [
+        "COKE 2L"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "COKE 2L"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Circle K 2708833",
+      "box": "OnAd 6",
+      "mode": "Execute",
+      "activity": "20oz Vitamin Water",
+      "packSizesStated": "20oz",
+      "lockedSkus": [
+        "VITAMIN WATER 20OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "VITAMIN WATER 20OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Circle K 2708833",
+      "box": "Sell Sheet 12",
+      "mode": "Sell",
+      "activity": "Cravings Korner",
+      "packSizesStated": "20oz; 1L; 16oz",
+      "lockedSkus": [
+        "COKE 20OZ 1L 16OZ",
+        "COKE ZERO SUGAR 20OZ 1L 16OZ",
+        "SPRITE 20OZ 1L 16OZ",
+        "SMARTWATER 20OZ 1L 16OZ",
+        "CORE POWER 20OZ 1L 16OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "COKE 20OZ 1L 16OZ",
+        "COKE ZERO SUGAR 20OZ 1L 16OZ",
+        "SPRITE 20OZ 1L 16OZ",
+        "SMARTWATER 20OZ 1L 16OZ",
+        "CORE POWER 20OZ 1L 16OZ"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Circle K 2708833",
+      "box": "Sell Sheet 13",
+      "mode": "Sell",
+      "activity": "Impulse Cooler - Coke Slim G5",
+      "packSizesStated": "Mini Can",
+      "lockedSkus": [
+        "COKE MINICAN"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "COKE MINICAN"
+      ],
+      "matchedButNotVisible": []
+    },
+    {
+      "store": "Circle K 2708833",
+      "box": "Sell Sheet 14",
+      "mode": "Sell",
+      "activity": "Queue Line cooler",
+      "packSizesStated": "20oz",
+      "lockedSkus": [
+        "SMARTWATER 20OZ"
+      ],
+      "candidateCount": 48,
+      "missingAnywhere": [
+        "SMARTWATER 20OZ"
+      ],
+      "matchedButNotVisible": []
+    }
+  ]
+}

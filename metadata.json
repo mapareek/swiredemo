@@ -1,0 +1,6 @@
+{
+  "name": "picOS Store Assist",
+  "description": "An iPad Pro landscape app prototype for Coca-Cola field sales visits, assisting with Hunt, Execute PicOS, and Optimize Existing Display workflows.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
