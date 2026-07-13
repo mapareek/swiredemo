@@ -43,6 +43,7 @@ type BackendSkuConstraint = {
 type LocationRecommendation = {
   candidateIndex: number;
   location: string;
+  poiType: string;
   liftPct: number;
   opportunityUnits: number;
   isBackendConstrained: boolean;
@@ -421,10 +422,32 @@ function aggregateLiftPctForCandidates(candidates = [] as PicOSOptimizationCandi
   return totalBaseline > 0 ? Math.round((totalOpportunity / totalBaseline) * 100) : bestLiftPct(selected);
 }
 
+function aggregateMetricsForCandidates(candidates = [] as PicOSOptimizationCandidate[]) {
+  const seen = new Set<string>();
+  const selected = [...candidates]
+    .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)
+    .filter(candidate => {
+      const key = skuIdentity(candidate.sku);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 4);
+  const opportunityUnits = selected.reduce((sum, candidate) => sum + candidate.opportunityUnits, 0);
+  const baselineUnits = selected.reduce((sum, candidate) => sum + Math.max(candidate.predictedCurrent, 0), 0);
+
+  return {
+    opportunityUnits: parseFloat(opportunityUnits.toFixed(1)),
+    liftPct: baselineUnits > 0 ? Math.round((opportunityUnits / baselineUnits) * 100) : bestLiftPct(selected)
+  };
+}
+
 function rankedLocationRecommendations(
   directive: OnAdDirective,
   skuConstraints: BackendSkuConstraint[],
-  locationConstraints: LocationConstraint[]
+  locationConstraints: LocationConstraint[],
+  blockedLocations: string[] = [],
+  blockedPoiTypes: string[] = []
 ) {
   const candidates = directive.optimizationCandidates || [];
   const constrainedCandidates = locationConstraints.length
@@ -433,17 +456,28 @@ function rankedLocationRecommendations(
   const skuCandidates = candidates.filter(candidate => candidateMatchesBackendSku(candidate, skuConstraints));
   const rankedPool = constrainedCandidates.length ? constrainedCandidates : skuCandidates.length ? skuCandidates : candidates;
   const recommendationsByLocation = new Map<string, LocationRecommendation>();
+  const blockedLocationSet = new Set(blockedLocations);
+  const blockedPoiSet = new Set(blockedPoiTypes);
 
   rankedPool.forEach(candidate => {
     const candidateIndex = candidates.indexOf(candidate);
     const candidateLoc = candidateLocation(directive, candidate);
+    const candidatePoi = candidatePoiType(directive, candidate);
+    if (blockedLocationSet.has(candidateLoc) || blockedPoiSet.has(candidatePoi)) return;
+    const sameExecutionCandidates = candidates.filter(option =>
+      candidateLocation(directive, option) === candidateLoc &&
+      candidatePoiType(directive, option) === candidatePoi &&
+      candidateMatchesBackendSku(option, skuConstraints)
+    );
+    const metrics = aggregateMetricsForCandidates(sameExecutionCandidates.length ? sameExecutionCandidates : [candidate]);
     const existing = recommendationsByLocation.get(candidateLoc);
-    if (existing && existing.liftPct >= candidate.liftPct) return;
+    if (existing && existing.liftPct >= metrics.liftPct) return;
     recommendationsByLocation.set(candidateLoc, {
       candidateIndex,
       location: candidateLoc,
-      liftPct: candidate.liftPct,
-      opportunityUnits: candidate.opportunityUnits,
+      poiType: candidatePoi,
+      liftPct: metrics.liftPct,
+      opportunityUnits: metrics.opportunityUnits,
       isBackendConstrained: locationConstraints.length > 0 && candidateMatchesLocationConstraint(candidate, locationConstraints)
     });
   });
@@ -457,8 +491,6 @@ function directivesForStore(store: StoreInfo): OnAdDirective[] {
   if (executeBoxes.length === 0) return ON_AD_DIRECTIVES;
 
   const rankedBoxes = [...executeBoxes].sort((a, b) => {
-    const modeDelta = (a.mode === "Execute" ? 0 : 1) - (b.mode === "Execute" ? 0 : 1);
-    if (modeDelta !== 0) return modeDelta;
     const aLockedSkus = a.skusStated !== "Not explicitly stated" ? splitSkus(a.skusStated, a.activity, a.packSizesStated) : [];
     const bLockedSkus = b.skusStated !== "Not explicitly stated" ? splitSkus(b.skusStated, b.activity, b.packSizesStated) : [];
     return bestLiftPctForSource(b, b.optimizationCandidates, backendSkuConstraints(bLockedSkus)) - bestLiftPctForSource(a, a.optimizationCandidates, backendSkuConstraints(aLockedSkus));
@@ -541,6 +573,15 @@ function candidateSetForIndex(directive: OnAdDirective, candidateIndex: number) 
   }).slice(0, maxItems);
 }
 
+function sortExecutionItems(items: PicOSExecutionItem[]) {
+  return [...items].sort((a, b) => {
+    const aLift = a.liftPct ?? -Infinity;
+    const bLift = b.liftPct ?? -Infinity;
+    if (bLift !== aLift) return bLift - aLift;
+    return b.targetFacings - a.targetFacings;
+  });
+}
+
 function buildItems(
   directiveId: string,
   directives: OnAdDirective[],
@@ -584,12 +625,7 @@ function buildItems(
       ...candidateMetrics(candidate)
     }));
 
-  return [...mergedLockedItems, ...optimizedItems].sort((a, b) => {
-    const aLift = a.liftPct ?? -Infinity;
-    const bLift = b.liftPct ?? -Infinity;
-    if (bLift !== aLift) return bLift - aLift;
-    return b.targetFacings - a.targetFacings;
-  });
+  return sortExecutionItems([...mergedLockedItems, ...optimizedItems]);
 }
 
 function sourceBadgeClasses(source: PicOSRecommendationSource) {
@@ -670,9 +706,12 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
     () => backendSkuConstraints(activeDirective.lockedSkus || activeDirective.skus.map(sku => sku.name)),
     [activeDirective]
   );
+  const [overrides, setOverrides] = useState<PicOSOverride[]>([]);
+  const [blockedLocations, setBlockedLocations] = useState<string[]>([]);
+  const [blockedPoiTypes, setBlockedPoiTypes] = useState<string[]>([]);
   const locationRecommendations = useMemo(
-    () => rankedLocationRecommendations(activeDirective, activeSkuConstraints, activeLocationConstraints),
-    [activeDirective, activeSkuConstraints, activeLocationConstraints]
+    () => rankedLocationRecommendations(activeDirective, activeSkuConstraints, activeLocationConstraints, blockedLocations, blockedPoiTypes),
+    [activeDirective, activeSkuConstraints, activeLocationConstraints, blockedLocations, blockedPoiTypes]
   );
 
   const initialLocation = useMemo(() => candidateLocation(activeDirective, activeCandidate), [activeDirective, activeCandidate]);
@@ -690,7 +729,6 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
     );
     return buildItems(directives[0].id, directives, baseCandidateIndex);
   });
-  const [overrides, setOverrides] = useState<PicOSOverride[]>([]);
 
   const totalFacings = items.reduce((sum, item) => sum + item.targetFacings, 0);
   const currentActivityMetrics = activityMetrics(items);
@@ -709,6 +747,8 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
     setPoiType(candidatePoiType(nextDirective, nextCandidate));
     setItems(buildItems(nextDirectiveId, directives, baseCandidateIndex));
     setOverrides([]);
+    setBlockedLocations([]);
+    setBlockedPoiTypes([]);
   };
 
   const handleResetActivity = () => {
@@ -762,6 +802,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
   };
 
   const handleCantDoLocation = () => {
+    setBlockedLocations(prev => [...new Set([...prev, location])]);
     const rankedNextIndex = nextLocationRecommendations[0]?.candidateIndex;
     if (rankedNextIndex !== undefined && rankedNextIndex !== candidateIndex) {
       const nextCandidate = activeDirective.optimizationCandidates?.[rankedNextIndex];
@@ -806,7 +847,13 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
   };
 
   const handleCantDoPoiType = () => {
-    const nextIndex = findNextCandidateIndex(candidate => candidate.displayType !== poiType) ?? candidateIndex;
+    setBlockedPoiTypes(prev => [...new Set([...prev, poiType])]);
+    const nextIndex = findNextCandidateIndex(candidate =>
+      candidatePoiType(activeDirective, candidate) !== poiType &&
+      !blockedPoiTypes.includes(candidatePoiType(activeDirective, candidate)) &&
+      !blockedLocations.includes(candidateLocation(activeDirective, candidate)) &&
+      candidateMatchesBackendSku(candidate, activeSkuConstraints)
+    ) ?? findNextCandidateIndex(candidate => candidatePoiType(activeDirective, candidate) !== poiType) ?? candidateIndex;
     if (nextIndex === candidateIndex) return;
 
     const nextCandidate = activeDirective.optimizationCandidates?.[nextIndex];
@@ -841,11 +888,11 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         nextBestValue: nextCandidate.sku,
         reason: reasonByType.sku
       });
-      setItems(prev => prev.map(item => item.id === itemId ? candidateToExecutionItem(nextCandidate, item) : item));
+      setItems(prev => sortExecutionItems(prev.map(item => item.id === itemId ? candidateToExecutionItem(nextCandidate, item) : item)));
       return;
     }
 
-    setItems(prev => prev.map(item => {
+    setItems(prev => sortExecutionItems(prev.map(item => {
       if (item.id !== itemId) return item;
       const nextBest = substituteSkus.find(sku => !prev.some(existing => existing.sku === sku)) || `${item.sku} alternate`;
       recordOverride({
@@ -865,7 +912,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         baselineUnits: undefined,
         idealUnits: undefined
       };
-    }));
+    })));
   };
 
   const handleCantDoFacings = (itemId: string) => {
@@ -893,17 +940,17 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         nextBestValue: `${nextCandidate.facings} facings`,
         reason: reasonByType.facings
       });
-      setItems(prev => prev.map(item => item.id === itemId ? {
+      setItems(prev => sortExecutionItems(prev.map(item => item.id === itemId ? {
         ...item,
         targetFacings: nextCandidate.facings,
         minFacings: nextCandidate.facings,
         source: item.source === "backend" ? "nextBest" : item.source,
         ...candidateMetrics(nextCandidate)
-      } : item));
+      } : item)));
       return;
     }
 
-    setItems(prev => prev.map(item => {
+    setItems(prev => sortExecutionItems(prev.map(item => {
       if (item.id !== itemId) return item;
       const nextFacingCount = Math.max(1, item.targetFacings - 1);
       recordOverride({
@@ -920,7 +967,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         source: item.source === "backend" ? "nextBest" : item.source,
         ...scaledMetrics
       };
-    }));
+    })));
   };
 
   const constraints: PicOSConstraints = {
@@ -1006,7 +1053,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                         {directive.mode}
                       </span>
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        +{Math.round(directive.bestLiftPct || 0)}%
+                        +{Math.round(directive.bestLiftPct || 0)}% lift
                       </span>
                     </div>
                     <span className="text-[9px] text-slate-400 font-mono font-semibold shrink-0">
@@ -1082,31 +1129,9 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-black text-slate-950 truncate">{location}</h2>
                     <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1 rounded font-mono uppercase shrink-0">
-                      {liftLabel(currentLocationRecommendation?.liftPct ?? activeCandidate?.liftPct, currentLocationRecommendation?.opportunityUnits ?? activeCandidate?.opportunityUnits)}
+                      {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
                     </span>
                   </div>
-                  {nextLocationRecommendations.length > 0 && (
-                    <div className="mt-3 space-y-1.5">
-                      <div className="text-[9px] font-bold uppercase tracking-wider font-mono text-slate-400">
-                        If unavailable
-                      </div>
-                      {nextLocationRecommendations.map((option, index) => (
-                        <div key={`${option.location}-${option.candidateIndex}`} className="flex items-center justify-between gap-3 rounded border border-slate-200 bg-slate-50 px-2.5 py-2">
-                          <div className="min-w-0">
-                            <div className="text-xs font-bold text-slate-900 truncate">
-                              {index + 1}. {option.location}
-                            </div>
-                            <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                              {option.isBackendConstrained ? "Backend option" : "Model fallback"}
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-slate-700 font-bold font-mono shrink-0">
-                            {liftLabel(option.liftPct, option.opportunityUnits)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <button
                   id="cant-do-location"
@@ -1126,6 +1151,9 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                     POI Type
                   </span>
                   <h2 className="text-lg font-black text-slate-950 mt-2 truncate">{poiType}</h2>
+                  <span className="inline-flex mt-2 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1 rounded font-mono uppercase">
+                    {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
+                  </span>
                 </div>
                 <button
                   id="cant-do-poi"
@@ -1157,19 +1185,21 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h4 className="font-bold text-slate-950 text-sm truncate">{item.sku}</h4>
-                      <span className={`inline-flex items-center gap-1 border rounded px-1.5 py-0.5 text-[9px] font-bold uppercase font-mono ${sourceBadgeClasses(item.source)}`}>
-                        {item.source === "backend" && <Lock className="h-2.5 w-2.5" />}
-                        {sourceLabel(item.source)}
-                      </span>
+                      {item.source === "backend" && (
+                        <span className={`inline-flex items-center gap-1 border rounded px-1.5 py-0.5 text-[9px] font-bold uppercase font-mono ${sourceBadgeClasses(item.source)}`}>
+                          <Lock className="h-2.5 w-2.5" />
+                          {sourceLabel(item.source)}
+                        </span>
+                      )}
+                      {item.liftPct !== undefined && item.opportunityUnits !== undefined && (
+                        <span className="inline-flex items-center border rounded px-2 py-1 text-[10px] font-bold uppercase font-mono bg-emerald-50 text-emerald-700 border-emerald-100">
+                          {liftLabel(item.liftPct, item.opportunityUnits)}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-slate-500 mt-1 font-mono">
                       Priority: {item.priority}
                       {item.replacedFrom && <span> / Replaced: {item.replacedFrom}</span>}
-                      {item.liftPct !== undefined && item.opportunityUnits !== undefined && (
-                        <span>
-                          {" "} / Lift {item.liftPct >= 0 ? "+" : ""}{Math.round(item.liftPct)}% / {item.opportunityUnits >= 0 ? "+" : ""}{item.opportunityUnits.toFixed(1)} units
-                        </span>
-                      )}
                     </div>
                   </div>
 
