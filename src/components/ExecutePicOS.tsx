@@ -398,11 +398,27 @@ function bestLiftPctForSource(
     : candidates;
   const skuEligibleCandidates = candidates.filter(candidate => candidateMatchesBackendSku(candidate, skuConstraints));
   const rankedCandidates = eligibleCandidates.length ? eligibleCandidates : skuEligibleCandidates.length ? skuEligibleCandidates : candidates;
-  return bestLiftPct(rankedCandidates);
+  return aggregateLiftPctForCandidates(rankedCandidates);
 }
 
 function bestLiftPct(candidates = [] as PicOSOptimizationCandidate[]) {
   return candidates.reduce((best, candidate) => Math.max(best, candidate.liftPct), 0);
+}
+
+function aggregateLiftPctForCandidates(candidates = [] as PicOSOptimizationCandidate[]) {
+  const seen = new Set<string>();
+  const selected = [...candidates]
+    .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)
+    .filter(candidate => {
+      const key = skuIdentity(candidate.sku);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 4);
+  const totalOpportunity = selected.reduce((sum, candidate) => sum + candidate.opportunityUnits, 0);
+  const totalBaseline = selected.reduce((sum, candidate) => sum + Math.max(candidate.predictedCurrent, 0), 0);
+  return totalBaseline > 0 ? Math.round((totalOpportunity / totalBaseline) * 100) : bestLiftPct(selected);
 }
 
 function rankedLocationRecommendations(
@@ -551,8 +567,7 @@ function buildItems(
         ...item,
         targetFacings: matchingCandidate.facings,
         minFacings: matchingCandidate.facings,
-        liftPct: matchingCandidate.liftPct,
-        opportunityUnits: matchingCandidate.opportunityUnits
+        ...candidateMetrics(matchingCandidate)
       }
       : item;
   });
@@ -566,8 +581,7 @@ function buildItems(
       minFacings: candidate.facings,
       source: sourceOverride || "recommended" as PicOSRecommendationSource,
       priority: "Medium" as const,
-      liftPct: candidate.liftPct,
-      opportunityUnits: candidate.opportunityUnits
+      ...candidateMetrics(candidate)
     }));
 
   return [...mergedLockedItems, ...optimizedItems].sort((a, b) => {
@@ -594,6 +608,51 @@ function liftLabel(liftPct: number | undefined, opportunityUnits: number | undef
   const lift = liftPct === undefined ? "0%" : `${liftPct >= 0 ? "+" : ""}${Math.round(liftPct)}%`;
   const units = opportunityUnits === undefined ? "0.0 units" : `${opportunityUnits >= 0 ? "+" : ""}${opportunityUnits.toFixed(1)} units`;
   return `${lift} lift / ${units}`;
+}
+
+function candidateMetrics(candidate: PicOSOptimizationCandidate) {
+  return {
+    liftPct: candidate.liftPct,
+    opportunityUnits: candidate.opportunityUnits,
+    baselineUnits: candidate.predictedCurrent,
+    idealUnits: candidate.predictedIdeal
+  };
+}
+
+function scaleItemMetrics(item: PicOSExecutionItem, nextFacings: number) {
+  const ratio = item.targetFacings > 0 ? nextFacings / item.targetFacings : 1;
+  const baselineUnits = item.baselineUnits;
+  const opportunityUnits = item.opportunityUnits === undefined ? undefined : parseFloat((item.opportunityUnits * ratio).toFixed(1));
+  const idealUnits = baselineUnits === undefined || opportunityUnits === undefined
+    ? undefined
+    : parseFloat((baselineUnits + opportunityUnits).toFixed(1));
+  const liftPct = baselineUnits && opportunityUnits !== undefined
+    ? parseFloat(((opportunityUnits / baselineUnits) * 100).toFixed(1))
+    : item.liftPct === undefined ? undefined : parseFloat((item.liftPct * ratio).toFixed(1));
+
+  return {
+    opportunityUnits,
+    baselineUnits,
+    idealUnits,
+    liftPct
+  };
+}
+
+function activityMetrics(items: PicOSExecutionItem[]) {
+  const totalOpportunityUnits = items.reduce((sum, item) => sum + (item.opportunityUnits || 0), 0);
+  const totalBaselineUnits = items.reduce((sum, item) => {
+    if (item.baselineUnits !== undefined) return sum + item.baselineUnits;
+    if (item.opportunityUnits !== undefined && item.liftPct && item.liftPct > 0) {
+      return sum + (item.opportunityUnits / (item.liftPct / 100));
+    }
+    return sum;
+  }, 0);
+  const aggregateLiftPct = totalBaselineUnits > 0 ? (totalOpportunityUnits / totalBaselineUnits) * 100 : 0;
+
+  return {
+    totalOpportunityUnits: parseFloat(totalOpportunityUnits.toFixed(1)),
+    aggregateLiftPct: Math.round(aggregateLiftPct)
+  };
 }
 
 export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto }: ExecutePicOSProps) {
@@ -634,6 +693,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
   const [overrides, setOverrides] = useState<PicOSOverride[]>([]);
 
   const totalFacings = items.reduce((sum, item) => sum + item.targetFacings, 0);
+  const currentActivityMetrics = activityMetrics(items);
 
   const resetForDirective = (nextDirectiveId: string) => {
     const nextDirective = directives.find(d => d.id === nextDirectiveId) || directives[0];
@@ -670,6 +730,26 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
   const recordOverride = (override: PicOSOverride) => {
     setOverrides(prev => [override, ...prev].slice(0, 6));
   };
+
+  const candidateMatchesCurrentExecution = (candidate: PicOSOptimizationCandidate) =>
+    candidateLocation(activeDirective, candidate) === location &&
+    candidatePoiType(activeDirective, candidate) === poiType;
+
+  const candidateToExecutionItem = (
+    candidate: PicOSOptimizationCandidate,
+    currentItem: PicOSExecutionItem,
+    source: PicOSRecommendationSource = "nextBest"
+  ): PicOSExecutionItem => ({
+    ...currentItem,
+    id: `${activeDirective.id}-override-${candidate.id}`,
+    sku: candidate.sku,
+    targetFacings: candidate.facings,
+    minFacings: candidate.facings,
+    source,
+    priority: currentItem.source === "backend" ? "High" : currentItem.priority,
+    replacedFrom: currentItem.sku,
+    ...candidateMetrics(candidate)
+  });
 
   const findNextCandidateIndex = (predicate: (candidate: PicOSOptimizationCandidate) => boolean) => {
     const candidates = activeDirective.optimizationCandidates || [];
@@ -743,20 +823,25 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
 
   const handleCantDoSku = (itemId: string) => {
     const currentItem = items.find(item => item.id === itemId);
-    const nextIndex = currentItem
-      ? findNextCandidateIndex(candidate => candidate.sku !== currentItem.sku)
-      : undefined;
-    const nextCandidate = nextIndex !== undefined ? activeDirective.optimizationCandidates?.[nextIndex] : undefined;
+    if (!currentItem) return;
 
-    if (nextCandidate && currentItem) {
+    const existingIdentities = new Set(items.filter(item => item.id !== itemId).map(item => skuIdentity(item.sku)));
+    const currentIdentity = skuIdentity(currentItem.sku);
+    const nextCandidate = (activeDirective.optimizationCandidates || [])
+      .filter(candidate => candidateMatchesCurrentExecution(candidate))
+      .filter(candidate => skuIdentity(candidate.sku) !== currentIdentity)
+      .filter(candidate => !existingIdentities.has(skuIdentity(candidate.sku)))
+      .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)[0];
+
+    if (nextCandidate) {
       recordOverride({
         type: "sku",
-        label: currentItem.source === "backend" ? "Backend locked SKU" : "Recommended SKU",
+        label: currentItem.source === "backend" ? "Locked SKU" : "Recommended SKU",
         previousValue: currentItem.sku,
         nextBestValue: nextCandidate.sku,
         reason: reasonByType.sku
       });
-      applyCandidate(nextIndex);
+      setItems(prev => prev.map(item => item.id === itemId ? candidateToExecutionItem(nextCandidate, item) : item));
       return;
     }
 
@@ -765,26 +850,42 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
       const nextBest = substituteSkus.find(sku => !prev.some(existing => existing.sku === sku)) || `${item.sku} alternate`;
       recordOverride({
         type: "sku",
-        label: item.source === "backend" ? "Backend locked SKU" : "Recommended SKU",
+        label: item.source === "backend" ? "Locked SKU" : "Recommended SKU",
         previousValue: item.sku,
         nextBestValue: nextBest,
         reason: reasonByType.sku
       });
-      return { ...item, sku: nextBest, source: "nextBest", replacedFrom: item.sku };
+      return {
+        ...item,
+        sku: nextBest,
+        source: "nextBest",
+        replacedFrom: item.sku,
+        liftPct: 0,
+        opportunityUnits: 0,
+        baselineUnits: undefined,
+        idealUnits: undefined
+      };
     }));
   };
 
   const handleCantDoFacings = (itemId: string) => {
     const currentItem = items.find(item => item.id === itemId);
-    const nextIndex = currentItem
-      ? findNextCandidateIndex(candidate =>
-        candidate.facings !== currentItem.targetFacings &&
-        (currentItem.source !== "backend" || candidateMatchesBackendSku(candidate, activeSkuConstraints))
-      )
-      : undefined;
-    const nextCandidate = nextIndex !== undefined ? activeDirective.optimizationCandidates?.[nextIndex] : undefined;
+    if (!currentItem) return;
 
-    if (nextCandidate && currentItem) {
+    const currentIdentity = skuIdentity(currentItem.sku);
+    const lowerFacingCandidate = (activeDirective.optimizationCandidates || [])
+      .filter(candidate => candidateMatchesCurrentExecution(candidate))
+      .filter(candidate => skuIdentity(candidate.sku) === currentIdentity)
+      .filter(candidate => candidate.facings < currentItem.targetFacings)
+      .sort((a, b) => b.facings - a.facings || b.liftPct - a.liftPct)[0];
+    const alternateFacingCandidate = (activeDirective.optimizationCandidates || [])
+      .filter(candidate => candidateMatchesCurrentExecution(candidate))
+      .filter(candidate => skuIdentity(candidate.sku) === currentIdentity)
+      .filter(candidate => candidate.facings !== currentItem.targetFacings)
+      .sort((a, b) => Math.abs(a.facings - currentItem.targetFacings) - Math.abs(b.facings - currentItem.targetFacings))[0];
+    const nextCandidate = lowerFacingCandidate || alternateFacingCandidate;
+
+    if (nextCandidate) {
       recordOverride({
         type: "facings",
         label: `${currentItem.sku} facings`,
@@ -792,7 +893,13 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         nextBestValue: `${nextCandidate.facings} facings`,
         reason: reasonByType.facings
       });
-      applyCandidate(nextIndex);
+      setItems(prev => prev.map(item => item.id === itemId ? {
+        ...item,
+        targetFacings: nextCandidate.facings,
+        minFacings: nextCandidate.facings,
+        source: item.source === "backend" ? "nextBest" : item.source,
+        ...candidateMetrics(nextCandidate)
+      } : item));
       return;
     }
 
@@ -806,10 +913,12 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         nextBestValue: `${nextFacingCount} facings`,
         reason: reasonByType.facings
       });
+      const scaledMetrics = scaleItemMetrics(item, nextFacingCount);
       return {
         ...item,
         targetFacings: nextFacingCount,
-        source: item.source === "backend" ? "nextBest" : item.source
+        source: item.source === "backend" ? "nextBest" : item.source,
+        ...scaledMetrics
       };
     }));
   };
@@ -939,6 +1048,12 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                   </div>
                 )}
                 <div className="grid grid-cols-1 gap-2 text-[10px] font-mono text-slate-600 min-w-[170px]">
+                  <div className="rounded border border-emerald-100 bg-emerald-50 px-2 py-1.5">
+                    <div className="text-emerald-700 uppercase font-bold">Activity lift</div>
+                    <div className="text-emerald-900 font-bold truncate">
+                      +{currentActivityMetrics.aggregateLiftPct}% / +{currentActivityMetrics.totalOpportunityUnits.toFixed(1)} units
+                    </div>
+                  </div>
                   <div className="rounded border border-slate-150 bg-slate-50 px-2 py-1.5">
                   <div className="text-slate-400 uppercase font-bold">Window</div>
                   <div className="text-slate-800 font-bold truncate">{activeDirective.timing}</div>

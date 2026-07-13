@@ -61,6 +61,8 @@ export interface PicOSExecutionItem {
   replacedFrom?: string;
   liftPct?: number;
   opportunityUnits?: number;
+  baselineUnits?: number;
+  idealUnits?: number;
 }
 
 export interface PicOSOverride {
