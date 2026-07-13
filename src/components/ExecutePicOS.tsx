@@ -670,6 +670,10 @@ function liftLabel(liftPct: number | undefined, opportunityUnits: number | undef
   return `${lift} lift / ${units}`;
 }
 
+function hasPositiveLift(liftPct: number | undefined) {
+  return liftPct !== undefined && liftPct > 0;
+}
+
 function candidateMetrics(candidate: PicOSOptimizationCandidate) {
   return {
     liftPct: candidate.liftPct,
@@ -1196,9 +1200,11 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                       }`}>
                         {directive.mode}
                       </span>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        +{Math.round(directive.bestLiftPct || 0)}% lift
-                      </span>
+                      {hasPositiveLift(directive.bestLiftPct) && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          +{Math.round(directive.bestLiftPct || 0)}% lift
+                        </span>
+                      )}
                     </div>
                     <span className="text-[9px] text-slate-400 font-mono font-semibold shrink-0">
                       {directive.timing}
@@ -1214,7 +1220,8 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
 
         </aside>
 
-        <main className="flex-1 bg-slate-100 flex flex-col p-4 overflow-y-auto min-w-0">
+        <main className="flex-1 bg-slate-100 flex flex-col overflow-hidden min-w-0">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
           <section className="bg-white border border-slate-200 rounded p-4 shadow-xs shrink-0">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
               <div className="min-w-0">
@@ -1239,12 +1246,14 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                   </div>
                 )}
                 <div className="grid grid-cols-1 gap-2 text-[10px] font-mono text-slate-600 min-w-[170px]">
-                  <div className="rounded border border-emerald-100 bg-emerald-50 px-2 py-1.5">
-                    <div className="text-emerald-700 uppercase font-bold">Activity lift</div>
-                    <div className="text-emerald-900 font-bold truncate">
-                      +{currentActivityMetrics.aggregateLiftPct}% / +{currentActivityMetrics.totalOpportunityUnits.toFixed(1)} units
+                  {currentActivityMetrics.aggregateLiftPct > 0 && (
+                    <div className="rounded border border-emerald-100 bg-emerald-50 px-2 py-1.5">
+                      <div className="text-emerald-700 uppercase font-bold">Activity lift</div>
+                      <div className="text-emerald-900 font-bold truncate">
+                        +{currentActivityMetrics.aggregateLiftPct}% / +{currentActivityMetrics.totalOpportunityUnits.toFixed(1)} units
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="rounded border border-slate-150 bg-slate-50 px-2 py-1.5">
                   <div className="text-slate-400 uppercase font-bold">Window</div>
                   <div className="text-slate-800 font-bold truncate">{activeDirective.timing}</div>
@@ -1272,9 +1281,11 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                   </span>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-black text-slate-950 truncate">{location}</h2>
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1 rounded font-mono uppercase shrink-0">
-                      {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
-                    </span>
+                    {currentActivityMetrics.aggregateLiftPct > 0 && (
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1 rounded font-mono uppercase shrink-0">
+                        {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button
@@ -1295,9 +1306,11 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                     POI Type
                   </span>
                   <h2 className="text-lg font-black text-slate-950 mt-2 truncate">{poiType}</h2>
-                  <span className="inline-flex mt-2 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1 rounded font-mono uppercase">
-                    {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
-                  </span>
+                  {currentActivityMetrics.aggregateLiftPct > 0 && (
+                    <span className="inline-flex mt-2 text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1 rounded font-mono uppercase">
+                      {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
+                    </span>
+                  )}
                 </div>
                 <button
                   id="cant-do-poi"
@@ -1310,7 +1323,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
             </div>
           </section>
 
-          <section className="bg-white border border-slate-200 rounded shadow-xs mt-3 overflow-hidden flex flex-col shrink-0 max-h-[360px]">
+          <section className="bg-white border border-slate-200 rounded shadow-xs overflow-hidden flex flex-col shrink-0 max-h-[360px]">
             <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono flex items-center gap-1">
@@ -1335,7 +1348,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                           {sourceLabel(item.source)}
                         </span>
                       )}
-                      {item.liftPct !== undefined && item.opportunityUnits !== undefined && (
+                      {hasPositiveLift(item.liftPct) && item.opportunityUnits !== undefined && (
                         <span className="inline-flex items-center border rounded px-2 py-1 text-[10px] font-bold uppercase font-mono bg-emerald-50 text-emerald-700 border-emerald-100">
                           {liftLabel(item.liftPct, item.opportunityUnits)}
                         </span>
@@ -1374,7 +1387,9 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
             </div>
           </section>
 
-          <footer className="mt-3 pt-3 border-t border-slate-200 bg-slate-100 flex items-center justify-end gap-4 shrink-0">
+          </div>
+
+          <footer className="border-t border-slate-200 bg-white px-4 py-3 flex items-center justify-end gap-4 shrink-0 shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
             <button
               id="proceed-after-picos"
               onClick={() => onProceedToAfterPhoto(constraints)}

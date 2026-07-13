@@ -23,6 +23,15 @@ type HuntOpportunity = {
   products: CandidateWithBox[];
 };
 
+function signedPercent(value: number) {
+  return `${value > 0 ? "+" : ""}${value}%`;
+}
+
+function PositiveLift({ value, suffix = "" }: { value: number; suffix?: string }) {
+  if (value <= 0) return null;
+  return <>{signedPercent(value)}{suffix}</>;
+}
+
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -266,8 +275,12 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
 
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Best Lift</span>
-                      <div className="text-2xl font-black text-red-600 font-mono">+{opportunity.bestLiftPct}%</div>
-                      <p className="text-[10px] text-slate-500 font-mono">Avg +{opportunity.averageLiftPct}%</p>
+                      <div className="text-2xl font-black text-red-600 font-mono">
+                        <PositiveLift value={opportunity.bestLiftPct} />
+                      </div>
+                      {opportunity.averageLiftPct > 0 && (
+                        <p className="text-[10px] text-slate-500 font-mono">Avg {signedPercent(opportunity.averageLiftPct)}</p>
+                      )}
                     </div>
 
                     <div className="lg:text-right">
@@ -291,7 +304,9 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
                             </div>
                           </div>
                           <div className="mt-3 flex items-center justify-between text-[10px] font-mono">
-                            <span className="text-red-600 font-bold">+{Math.round(product.liftPct)}% lift</span>
+                            <span className="text-red-600 font-bold">
+                              <PositiveLift value={Math.round(product.liftPct)} suffix=" lift" />
+                            </span>
                             <span className="text-slate-500">+{product.opportunityUnits.toFixed(1)} units</span>
                           </div>
                         </div>

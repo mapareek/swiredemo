@@ -32,6 +32,15 @@ function dedupeByNormalized(values: string[]) {
   });
 }
 
+function signedPercent(value: number) {
+  return `${value > 0 ? "+" : ""}${value}%`;
+}
+
+function PositiveLift({ value, className }: { value: number; className: string }) {
+  if (value <= 0) return null;
+  return <div className={className}>{signedPercent(value)}</div>;
+}
+
 export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPhoto }: OptimizeDisplayProps) {
   const displayTypeOptions = useMemo(() => dedupeByNormalized(
     store.picosBoxes.flatMap(box => (box.optimizationCandidates || []).map(candidate => candidate.displayType).filter(Boolean))
@@ -353,7 +362,7 @@ export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPh
                 </div>
                 <div className="text-left md:text-right">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Expected Lift</span>
-                  <div className="text-3xl font-black text-red-600 font-mono">+{optData.liftPercent}%</div>
+                  <PositiveLift value={optData.liftPercent} className="text-3xl font-black text-red-600 font-mono" />
                 </div>
               </div>
 
@@ -386,7 +395,7 @@ export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPh
 
                       <div className="md:text-right">
                         <div className="text-[10px] text-slate-400 uppercase font-bold font-mono">Lift</div>
-                        <div className="text-lg font-black text-red-600 font-mono">+{item.lift}%</div>
+                        <PositiveLift value={item.lift} className="text-lg font-black text-red-600 font-mono" />
                       </div>
                     </div>
                   ))}

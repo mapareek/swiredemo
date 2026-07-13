@@ -34,6 +34,14 @@ function planLiftMetrics(picosConstraints?: PicOSConstraints | null) {
   };
 }
 
+function signedPercent(value: number) {
+  return `${value > 0 ? "+" : ""}${value}%`;
+}
+
+function signedUnits(value: number) {
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)} units`;
+}
+
 export default function Summary({ store, flowType, picosConstraints, removalSurvey, onFinish, onCloseVisit }: SummaryProps) {
   const executionLift = planLiftMetrics(picosConstraints);
   const lift = flowType === "EXECUTE_PICOS" ? executionLift.liftPct : 24;
@@ -110,15 +118,15 @@ export default function Summary({ store, flowType, picosConstraints, removalSurv
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono block">
                 Projected Sales / Velocity Lift
               </span>
-              {liftUnits !== undefined ? (
+              {lift > 0 && liftUnits !== undefined ? (
                 <span className="inline-flex mt-3 border rounded px-3 py-2 text-sm font-bold uppercase font-mono bg-emerald-50 text-emerald-700 border-emerald-100">
-                  +{lift}% lift / +{liftUnits.toFixed(1)} units
+                  {signedPercent(lift)} lift / {signedUnits(liftUnits)}
                 </span>
-              ) : (
+              ) : lift > 0 ? (
                 <span className="text-3xl font-black text-red-600 tracking-tight font-sans mt-1 block">
-                  +{lift}%
+                  {signedPercent(lift)}
                 </span>
-              )}
+              ) : null}
             </div>
             <div className="p-3 bg-red-50 rounded-full text-red-600 border border-red-150">
               <TrendingUp className="h-6 w-6" />

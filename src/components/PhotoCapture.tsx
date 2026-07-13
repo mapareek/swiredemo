@@ -13,7 +13,7 @@ interface PhotoCaptureProps {
 export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCancel }: PhotoCaptureProps) {
   const [isCaptured, setIsCaptured] = useState(false);
   const [isShutterFlashing, setIsShutterFlashing] = useState(false);
-  const cameraMockImage = photoType === "BEFORE" ? IMAGES.cameraBefore : IMAGES.cameraAfter;
+  const cameraMockImage = IMAGES.cameraAfter;
   const direction = flowType === "EXECUTE_PICOS"
     ? "Capture the completed PicOS activity."
     : flowType === "HUNT_SPACE"

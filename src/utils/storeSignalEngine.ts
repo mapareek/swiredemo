@@ -218,6 +218,7 @@ export function getStoreSignalOptimizeRecommendation(
   const candidates = allCandidates(store)
     .filter(candidate => displayMatches(candidate, displayType))
     .filter(candidate => locationLabelMatches(candidate, constraints.location))
+    .filter(candidate => candidate.liftPct > 0)
     .map(candidate => ({ candidate }))
     .sort((a, b) =>
       b.candidate.liftPct - a.candidate.liftPct ||
