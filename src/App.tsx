@@ -64,15 +64,15 @@ export default function App() {
   // Hunt actions to proceed directly into photo captures
   const handleHuntSelectAction = (nextScreen: Screen, selectedFlow: FlowType) => {
     setFlowType(selectedFlow);
-    setCurrentScreen(selectedFlow === "EXECUTE_PICOS" ? Screen.EXECUTE_PICOS : nextScreen);
+    setCurrentScreen(selectedFlow === "EXECUTE_PICOS" ? Screen.EXECUTE_PICOS : selectedFlow === "HUNT_SPACE" ? Screen.AFTER_PHOTO : nextScreen);
     triggerToast(`Initiating ${selectedFlow === "HUNT_SPACE" ? "Hunt Space Capture" : selectedFlow === "EXECUTE_PICOS" ? "PicOS Execution" : "SKU Optimization"}`);
   };
 
   // Optimize configuration complete
-  const handleProceedToBeforePhoto = (selectedFlow: "OPTIMIZE_DISPLAY", constraints: OptimizeConstraints) => {
+  const handleProceedToOptimizePhoto = (selectedFlow: "OPTIMIZE_DISPLAY", constraints: OptimizeConstraints) => {
     setFlowType(selectedFlow);
     setOptimizeConstraints(constraints);
-    setCurrentScreen(Screen.BEFORE_PHOTO);
+    setCurrentScreen(Screen.AFTER_PHOTO);
   };
 
   // PicOS configuration complete
@@ -86,7 +86,7 @@ export default function App() {
   // Before photo captured
   const handleConfirmBeforePhoto = () => {
     setCurrentScreen(Screen.AFTER_PHOTO);
-    triggerToast("Before Photo stamped & saved. Capture the optimized display after photo.");
+    triggerToast("Photo saved. Capture the final display photo.");
   };
 
   // After photo captured
@@ -109,7 +109,7 @@ export default function App() {
   // Finish workflow and return to hub
   const handleFinishWorkflow = () => {
     setCurrentScreen(Screen.ACTION_HUB);
-    triggerToast(`Congratulations! ${flowType === "HUNT_SPACE" ? "Hunt Space" : flowType === "EXECUTE_PICOS" ? "PicOS Execution" : "SKU Optimization"} successfully synced to Liberty B2B Portal.`);
+    triggerToast(`${flowType === "HUNT_SPACE" ? "Hunt Space" : flowType === "EXECUTE_PICOS" ? "PicOS Execution" : "SKU Optimization"} successfully synced.`);
   };
 
   // Close Visit
@@ -169,7 +169,7 @@ export default function App() {
         <OptimizeDisplay
           store={selectedStore}
           onBackToHub={handleBackToHub}
-          onProceedToBeforePhoto={handleProceedToBeforePhoto}
+          onProceedToAfterPhoto={handleProceedToOptimizePhoto}
         />
       )}
 
@@ -179,9 +179,7 @@ export default function App() {
           photoType="BEFORE"
           flowType={flowType}
           onConfirmPhoto={handleConfirmBeforePhoto}
-          onCancel={() => {
-            setCurrentScreen(flowType === "HUNT_SPACE" ? Screen.HUNT_WORKFLOW : Screen.OPTIMIZE_DISPLAY);
-          }}
+          onCancel={() => setCurrentScreen(flowType === "HUNT_SPACE" ? Screen.HUNT_WORKFLOW : Screen.OPTIMIZE_DISPLAY)}
         />
       )}
 
@@ -191,7 +189,7 @@ export default function App() {
           photoType="AFTER"
           flowType={flowType}
           onConfirmPhoto={handleConfirmAfterPhoto}
-          onCancel={() => setCurrentScreen(flowType === "EXECUTE_PICOS" ? Screen.EXECUTE_PICOS : Screen.BEFORE_PHOTO)}
+          onCancel={() => setCurrentScreen(flowType === "EXECUTE_PICOS" ? Screen.EXECUTE_PICOS : flowType === "HUNT_SPACE" ? Screen.HUNT_WORKFLOW : Screen.OPTIMIZE_DISPLAY)}
         />
       )}
 
@@ -232,29 +230,7 @@ export default function App() {
       {isVisitClosed && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-slate-200 rounded max-w-md w-full p-6 text-center animate-scale-up">
-            <div className="w-12 h-12 bg-red-50 border border-red-100 rounded-full flex items-center justify-center text-red-600 mx-auto mb-4">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            
-            <h3 className="text-lg font-bold text-slate-950">Store Visit Synchronized</h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              All field audits, planograms, checklists and photo coordinates have been permanently committed to the Liberty B2B database.
-            </p>
-
-            <div className="my-5 p-3.5 bg-slate-50 rounded text-left space-y-1.5 font-mono text-[11px] text-slate-600">
-              <div className="flex justify-between">
-                <span>Account Visited:</span>
-                <span className="font-bold text-slate-900">{selectedStore.storeName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total Actions:</span>
-                <span className="font-bold text-slate-900">{selectedStore.picosBoxes.length} PicOS Activities Loaded</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Sync Code:</span>
-                <span className="font-bold text-emerald-600">{selectedStore.routeId}-SYNC-OK</span>
-              </div>
-            </div>
+            <h3 className="text-lg font-bold text-slate-950 mb-5">Are you sure</h3>
 
             <button
               onClick={handleResetApp}

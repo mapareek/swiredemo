@@ -21,7 +21,7 @@ export function getHuntRecommendation(constraints: HuntConstraints): Recommendat
       skus: [],
       totalCost: 0,
       expectedLift: 0,
-      explanation: "Empty State: Liberty Coca-Cola has no approved 'Still' category checklist items for Checkout Lanes in Large Store/Grocery format. Try selecting 'Sparkling' or choosing 'Lobby Front' / 'Front Endcap' locations.",
+      explanation: "Empty State: No approved 'Still' category checklist items for Checkout Lanes in Large Store/Grocery format. Try selecting 'Sparkling' or choosing 'Lobby Front' / 'Front Endcap' locations.",
       feasible: false
     };
   }

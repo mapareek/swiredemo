@@ -1,11 +1,46 @@
 import React, { useState } from "react";
 import { StoreInfo } from "../types";
 import { PICOS_STORES } from "../data/picosStores";
-import { MapPin, Search, Filter, Landmark } from "lucide-react";
+import { MapPin, Search, Filter, Landmark, Users } from "lucide-react";
 
 interface StoreSelectorProps {
   selectedStore: StoreInfo;
   onStartVisit: (store: StoreInfo) => void;
+}
+
+function MixBar({ label, value, color = "bg-red-600" }: { label: string; value: number; color?: string }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-3 text-[11px]">
+        <span className="font-semibold text-slate-700 truncate">{label}</span>
+        <span className="font-mono font-bold text-slate-900 shrink-0">{value.toFixed(1)}%</span>
+      </div>
+      <div className="h-2 rounded bg-slate-200 overflow-hidden">
+        <div className={`h-full rounded ${color}`} style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function MixChart({
+  title,
+  rows
+}: {
+  title: string;
+  rows: { label: string; value: number; color?: string }[];
+}) {
+  return (
+    <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-xs">
+      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono mb-2">{title}</div>
+      <div className="space-y-2.5">
+        {rows.map(row => (
+          <React.Fragment key={row.label}>
+            <MixBar label={row.label} value={row.value} color={row.color} />
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function StoreSelector({ selectedStore, onStartVisit }: StoreSelectorProps) {
@@ -109,13 +144,53 @@ export default function StoreSelector({ selectedStore, onStartVisit }: StoreSele
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2.5 text-sm text-slate-800 pt-1">
-                    <div className="w-4 h-4 text-slate-400 font-mono text-xs font-bold leading-none mt-0.5">@</div>
-                    <div>
-                      <p className="font-medium">Bottler</p>
-                      <p className="text-xs text-slate-600 mt-0.5">Swire</p>
+                  {activeStore.demographics && (
+                    <div className="pt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-2 text-sm text-slate-800">
+                        <Users className="h-4 w-4 text-slate-400" />
+                        <div>
+                          <p className="font-medium">Trade Area Demographics</p>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            Zip {activeStore.demographics.zip} - {activeStore.demographics.segment}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+                        <MixChart
+                          title="Age Mix"
+                          rows={[
+                            { label: "18-34", value: activeStore.demographics.ageMix["18-34"], color: "bg-red-600" },
+                            { label: "35-54", value: activeStore.demographics.ageMix["35-54"], color: "bg-red-500" },
+                            { label: "55-64", value: activeStore.demographics.ageMix["55-64"], color: "bg-slate-500" },
+                            { label: "65+", value: activeStore.demographics.ageMix["65+"], color: "bg-slate-400" }
+                          ]}
+                        />
+
+                        <MixChart
+                          title="Income Mix"
+                          rows={[
+                            { label: "Middle", value: activeStore.demographics.incomeMix.Middle, color: "bg-red-600" },
+                            { label: "Low", value: activeStore.demographics.incomeMix.Low, color: "bg-slate-500" },
+                            { label: "High", value: activeStore.demographics.incomeMix.High, color: "bg-slate-400" }
+                          ]}
+                        />
+
+                        <MixChart
+                          title="Ethnicity Mix"
+                          rows={[
+                            { label: "Hispanic", value: activeStore.demographics.ethnicityMix.Hispanic, color: "bg-red-600" },
+                            { label: "White", value: activeStore.demographics.ethnicityMix.White, color: "bg-slate-500" },
+                            { label: "Black", value: activeStore.demographics.ethnicityMix.Black, color: "bg-slate-400" }
+                          ]}
+                        />
+                      </div>
+
+                      <p className="text-xs text-slate-600 mt-3 font-medium">
+                        {activeStore.demographics.note}
+                      </p>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

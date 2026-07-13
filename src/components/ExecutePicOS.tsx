@@ -29,6 +29,24 @@ const substituteSkus = [
   "Topo Chico Sabores 8pk"
 ];
 
+const fallbackLocations = [
+  "Front Lobby",
+  "End Cap",
+  "Aisle",
+  "Checkout",
+  "Food Service",
+  "Cooler",
+  "Dump Bin",
+  "Pharmacy"
+];
+
+const fallbackPoiTypes = [
+  "Cooler",
+  "Display",
+  "Shipper",
+  "Rack"
+];
+
 type LocationConstraint = {
   label: string;
   keys: string[];
@@ -491,6 +509,8 @@ function directivesForStore(store: StoreInfo): OnAdDirective[] {
   if (executeBoxes.length === 0) return ON_AD_DIRECTIVES;
 
   const rankedBoxes = [...executeBoxes].sort((a, b) => {
+    const modeDelta = (a.mode === "Execute" ? 0 : 1) - (b.mode === "Execute" ? 0 : 1);
+    if (modeDelta !== 0) return modeDelta;
     const aLockedSkus = a.skusStated !== "Not explicitly stated" ? splitSkus(a.skusStated, a.activity, a.packSizesStated) : [];
     const bLockedSkus = b.skusStated !== "Not explicitly stated" ? splitSkus(b.skusStated, b.activity, b.packSizesStated) : [];
     return bestLiftPctForSource(b, b.optimizationCandidates, backendSkuConstraints(bLockedSkus)) - bestLiftPctForSource(a, a.optimizationCandidates, backendSkuConstraints(aLockedSkus));
@@ -571,6 +591,10 @@ function candidateSetForIndex(directive: OnAdDirective, candidateIndex: number) 
     seen.add(key);
     return true;
   }).slice(0, maxItems);
+}
+
+function candidateGroupKey(directive: OnAdDirective, candidate: PicOSOptimizationCandidate) {
+  return `${candidateLocation(directive, candidate)}::${candidatePoiType(directive, candidate)}`;
 }
 
 function sortExecutionItems(items: PicOSExecutionItem[]) {
@@ -667,6 +691,26 @@ function scaleItemMetrics(item: PicOSExecutionItem, nextFacings: number) {
     : item.liftPct === undefined ? undefined : parseFloat((item.liftPct * ratio).toFixed(1));
 
   return {
+    opportunityUnits,
+    baselineUnits,
+    idealUnits,
+    liftPct
+  };
+}
+
+function scaleItemOpportunity(item: PicOSExecutionItem, ratio: number) {
+  const opportunityUnits = item.opportunityUnits === undefined ? undefined : parseFloat((item.opportunityUnits * ratio).toFixed(1));
+  const baselineUnits = item.baselineUnits;
+  const idealUnits = baselineUnits === undefined || opportunityUnits === undefined
+    ? undefined
+    : parseFloat((baselineUnits + opportunityUnits).toFixed(1));
+  const liftPct = baselineUnits && opportunityUnits !== undefined
+    ? parseFloat(((opportunityUnits / baselineUnits) * 100).toFixed(1))
+    : item.liftPct === undefined ? undefined : parseFloat((item.liftPct * ratio).toFixed(1));
+
+  return {
+    ...item,
+    source: item.source === "backend" ? "nextBest" as PicOSRecommendationSource : item.source,
     opportunityUnits,
     baselineUnits,
     idealUnits,
@@ -801,38 +845,108 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
     return rankedAfterCurrent.find(index => predicate(candidates[index]));
   };
 
+  const bestCandidateIndexForExecution = ({
+    nextBlockedLocations = blockedLocations,
+    nextBlockedPoiTypes = blockedPoiTypes,
+    requireDifferentLocation = false,
+    requireDifferentPoiType = false,
+    useBackendLocationConstraints = true,
+    useSkuConstraints = true
+  }: {
+    nextBlockedLocations?: string[];
+    nextBlockedPoiTypes?: string[];
+    requireDifferentLocation?: boolean;
+    requireDifferentPoiType?: boolean;
+    useBackendLocationConstraints?: boolean;
+    useSkuConstraints?: boolean;
+  }) => {
+    const candidates = activeDirective.optimizationCandidates || [];
+    if (!candidates.length) return undefined;
+
+    const blockedLocationSet = new Set(nextBlockedLocations);
+    const blockedPoiSet = new Set(nextBlockedPoiTypes);
+    const grouped = new Map<string, {
+      candidateIndex: number;
+      candidates: PicOSOptimizationCandidate[];
+      score: number;
+      opportunityUnits: number;
+    }>();
+
+    candidates.forEach((candidate, index) => {
+      const candidateLoc = candidateLocation(activeDirective, candidate);
+      const candidatePoi = candidatePoiType(activeDirective, candidate);
+      if (blockedLocationSet.has(candidateLoc) || blockedPoiSet.has(candidatePoi)) return;
+      if (requireDifferentLocation && candidateLoc === location) return;
+      if (requireDifferentPoiType && candidatePoi === poiType) return;
+      if (useSkuConstraints && !candidateMatchesBackendSku(candidate, activeSkuConstraints)) return;
+      if (
+        useBackendLocationConstraints &&
+        activeLocationConstraints.length > 0 &&
+        !candidateMatchesLocationConstraint(candidate, activeLocationConstraints)
+      ) return;
+
+      const key = candidateGroupKey(activeDirective, candidate);
+      const existing = grouped.get(key);
+      const groupCandidates = candidates.filter(option =>
+        candidateGroupKey(activeDirective, option) === key &&
+        (!useSkuConstraints || candidateMatchesBackendSku(option, activeSkuConstraints))
+      );
+      const metrics = aggregateMetricsForCandidates(groupCandidates.length ? groupCandidates : [candidate]);
+
+      if (!existing || metrics.liftPct > existing.score || (
+        metrics.liftPct === existing.score && metrics.opportunityUnits > existing.opportunityUnits
+      )) {
+        grouped.set(key, {
+          candidateIndex: index,
+          candidates: groupCandidates,
+          score: metrics.liftPct,
+          opportunityUnits: metrics.opportunityUnits
+        });
+      }
+    });
+
+    return [...grouped.values()]
+      .sort((a, b) => b.score - a.score || b.opportunityUnits - a.opportunityUnits)[0]?.candidateIndex;
+  };
+
   const handleCantDoLocation = () => {
-    setBlockedLocations(prev => [...new Set([...prev, location])]);
-    const rankedNextIndex = nextLocationRecommendations[0]?.candidateIndex;
-    if (rankedNextIndex !== undefined && rankedNextIndex !== candidateIndex) {
-      const nextCandidate = activeDirective.optimizationCandidates?.[rankedNextIndex];
-      const nextBest = candidateLocation(activeDirective, nextCandidate);
+    const nextBlockedLocations = [...new Set([...blockedLocations, location])];
+    setBlockedLocations(nextBlockedLocations);
+
+    const nextIndex =
+      bestCandidateIndexForExecution({
+        nextBlockedLocations,
+        requireDifferentLocation: true,
+        useBackendLocationConstraints: true,
+        useSkuConstraints: true
+      }) ??
+      bestCandidateIndexForExecution({
+        nextBlockedLocations,
+        requireDifferentLocation: true,
+        useBackendLocationConstraints: false,
+        useSkuConstraints: true
+      }) ??
+      bestCandidateIndexForExecution({
+        nextBlockedLocations,
+        requireDifferentLocation: true,
+      useBackendLocationConstraints: false,
+      useSkuConstraints: false
+    }) ??
+      candidateIndex;
+    if (nextIndex === candidateIndex) {
+      const fallbackLocation = fallbackLocations.find(option => option !== location && !nextBlockedLocations.includes(option));
+      if (!fallbackLocation) return;
       recordOverride({
         type: "location",
         label: "Ideal location",
         previousValue: location,
-        nextBestValue: nextBest,
+        nextBestValue: fallbackLocation,
         reason: reasonByType.location
       });
-      applyCandidate(rankedNextIndex);
+      setLocation(fallbackLocation);
+      setItems(prev => sortExecutionItems(prev.map(item => scaleItemOpportunity(item, 0.85))));
       return;
     }
-
-    const constrainedNextIndex = activeLocationConstraints.length
-      ? findNextCandidateIndex(candidate => {
-        const nextLocation = candidateLocation(activeDirective, candidate);
-        return nextLocation !== location &&
-          candidateMatchesBackendSku(candidate, activeSkuConstraints) &&
-          candidateMatchesLocationConstraint(candidate, activeLocationConstraints);
-      })
-      : undefined;
-    const skuFallbackNextIndex = findNextCandidateIndex(candidate =>
-      candidateLocation(activeDirective, candidate) !== location &&
-      candidateMatchesBackendSku(candidate, activeSkuConstraints)
-    );
-    const fallbackNextIndex = findNextCandidateIndex(candidate => candidateLocation(activeDirective, candidate) !== location);
-    const nextIndex = constrainedNextIndex ?? skuFallbackNextIndex ?? fallbackNextIndex ?? candidateIndex;
-    if (nextIndex === candidateIndex) return;
 
     const nextCandidate = activeDirective.optimizationCandidates?.[nextIndex];
     const nextBest = candidateLocation(activeDirective, nextCandidate);
@@ -847,14 +961,44 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
   };
 
   const handleCantDoPoiType = () => {
-    setBlockedPoiTypes(prev => [...new Set([...prev, poiType])]);
-    const nextIndex = findNextCandidateIndex(candidate =>
-      candidatePoiType(activeDirective, candidate) !== poiType &&
-      !blockedPoiTypes.includes(candidatePoiType(activeDirective, candidate)) &&
-      !blockedLocations.includes(candidateLocation(activeDirective, candidate)) &&
-      candidateMatchesBackendSku(candidate, activeSkuConstraints)
-    ) ?? findNextCandidateIndex(candidate => candidatePoiType(activeDirective, candidate) !== poiType) ?? candidateIndex;
-    if (nextIndex === candidateIndex) return;
+    const nextBlockedPoiTypes = [...new Set([...blockedPoiTypes, poiType])];
+    setBlockedPoiTypes(nextBlockedPoiTypes);
+
+    const nextIndex =
+      bestCandidateIndexForExecution({
+        nextBlockedPoiTypes,
+        requireDifferentPoiType: true,
+        useBackendLocationConstraints: true,
+        useSkuConstraints: true
+      }) ??
+      bestCandidateIndexForExecution({
+        nextBlockedPoiTypes,
+        requireDifferentPoiType: true,
+        useBackendLocationConstraints: false,
+        useSkuConstraints: true
+      }) ??
+      bestCandidateIndexForExecution({
+        nextBlockedPoiTypes,
+        requireDifferentPoiType: true,
+        useBackendLocationConstraints: false,
+        useSkuConstraints: false
+      }) ??
+      findNextCandidateIndex(candidate => candidatePoiType(activeDirective, candidate) !== poiType) ??
+      candidateIndex;
+    if (nextIndex === candidateIndex) {
+      const fallbackPoiType = fallbackPoiTypes.find(option => option !== poiType && !nextBlockedPoiTypes.includes(option));
+      if (!fallbackPoiType) return;
+      recordOverride({
+        type: "poiType",
+        label: "POI type",
+        previousValue: poiType,
+        nextBestValue: fallbackPoiType,
+        reason: reasonByType.poiType
+      });
+      setPoiType(fallbackPoiType);
+      setItems(prev => sortExecutionItems(prev.map(item => scaleItemOpportunity(item, 0.85))));
+      return;
+    }
 
     const nextCandidate = activeDirective.optimizationCandidates?.[nextIndex];
     const nextBest = candidatePoiType(activeDirective, nextCandidate);

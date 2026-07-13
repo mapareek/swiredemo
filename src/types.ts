@@ -20,12 +20,35 @@ export interface StoreInfo {
   storeName: string;
   segment: string;
   address: string;
+  demographics?: StoreDemographics;
   manager: {
     name: string;
     avatar: string;
     phone: string;
   };
   picosBoxes: PicOSActivityBox[];
+}
+
+export interface StoreDemographics {
+  zip: string;
+  segment: string;
+  note: string;
+  ageMix: {
+    "18-34": number;
+    "35-54": number;
+    "55-64": number;
+    "65+": number;
+  };
+  incomeMix: {
+    Low: number;
+    Middle: number;
+    High: number;
+  };
+  ethnicityMix: {
+    Hispanic: number;
+    White: number;
+    Black: number;
+  };
 }
 
 export interface HuntConstraints {

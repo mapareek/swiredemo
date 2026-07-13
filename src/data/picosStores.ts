@@ -9,6 +9,27 @@ export const PICOS_STORES: StoreInfo[] = [
     segment: "Large Store",
     address: "5250 W INDIAN SCHOOL RD, PHOENIX, AZ 85031",
     routeId: "-3.2609E+18",
+    demographics: {
+      zip: "85031",
+      segment: "Hispanic high / Mid income",
+      note: "Hispanic high, mid-income trade area",
+      ageMix: {
+        "18-34": 38.2,
+        "35-54": 35.2,
+        "55-64": 13.2,
+        "65+": 13.4
+      },
+      incomeMix: {
+        Low: 25.6,
+        Middle: 52.2,
+        High: 22.2
+      },
+      ethnicityMix: {
+        Hispanic: 79.2,
+        White: 12.8,
+        Black: 4.7
+      }
+    },
     manager: {
       name: "Store Manager",
       avatar: IMAGES.storeManager,
@@ -18036,6 +18057,27 @@ export const PICOS_STORES: StoreInfo[] = [
     segment: "Drug/Value",
     address: "5109 W THOMAS RD, PHOENIX, AZ 85031",
     routeId: "-4.29654E+18",
+    demographics: {
+      zip: "85031",
+      segment: "Hispanic high / Mid income",
+      note: "Hispanic high, mid-income trade area",
+      ageMix: {
+        "18-34": 38.2,
+        "35-54": 35.2,
+        "55-64": 13.2,
+        "65+": 13.4
+      },
+      incomeMix: {
+        Low: 25.6,
+        Middle: 52.2,
+        High: 22.2
+      },
+      ethnicityMix: {
+        Hispanic: 79.2,
+        White: 12.8,
+        Black: 4.7
+      }
+    },
     manager: {
       name: "Store Manager",
       avatar: IMAGES.storeManager,
@@ -54119,6 +54161,27 @@ export const PICOS_STORES: StoreInfo[] = [
     segment: "Convenience/Retail",
     address: "6649 W THOMAS RD, PHOENIX, AZ 85033",
     routeId: "8.3301E+18",
+    demographics: {
+      zip: "85033",
+      segment: "Hispanic high / Mid income",
+      note: "Younger Hispanic high, mid-income trade area",
+      ageMix: {
+        "18-34": 42.1,
+        "35-54": 35.8,
+        "55-64": 12.1,
+        "65+": 10.0
+      },
+      incomeMix: {
+        Low: 22.6,
+        Middle: 54.3,
+        High: 23.1
+      },
+      ethnicityMix: {
+        Hispanic: 80.9,
+        White: 10.8,
+        Black: 4.6
+      }
+    },
     manager: {
       name: "Store Manager",
       avatar: IMAGES.storeManager,

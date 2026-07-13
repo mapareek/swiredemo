@@ -6,7 +6,7 @@ import { getStoreSignalOptimizeRecommendation } from "../utils/storeSignalEngine
 interface OptimizeDisplayProps {
   store: StoreInfo;
   onBackToHub: () => void;
-  onProceedToBeforePhoto: (flowType: "OPTIMIZE_DISPLAY", constraints: OptimizeConstraints) => void;
+  onProceedToAfterPhoto: (flowType: "OPTIMIZE_DISPLAY", constraints: OptimizeConstraints) => void;
 }
 
 type OptimizeStep = "DISPLAY_TYPE" | "LOCATION" | "CURRENT_PRODUCTS" | "RECOMMENDATION";
@@ -32,7 +32,7 @@ function dedupeByNormalized(values: string[]) {
   });
 }
 
-export default function OptimizeDisplay({ store, onBackToHub, onProceedToBeforePhoto }: OptimizeDisplayProps) {
+export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPhoto }: OptimizeDisplayProps) {
   const displayTypeOptions = useMemo(() => dedupeByNormalized(
     store.picosBoxes.flatMap(box => (box.optimizationCandidates || []).map(candidate => candidate.displayType).filter(Boolean))
   ).sort(), [store]);
@@ -398,11 +398,11 @@ export default function OptimizeDisplay({ store, onBackToHub, onProceedToBeforeP
                   Back
                 </button>
                 <button
-                  id="proceed-before-opt"
-                  onClick={() => onProceedToBeforePhoto("OPTIMIZE_DISPLAY", constraints)}
+                  id="proceed-after-opt"
+                  onClick={() => onProceedToAfterPhoto("OPTIMIZE_DISPLAY", constraints)}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-2"
                 >
-                  Confirm & Capture Before Photo <ArrowRight className="h-4 w-4" />
+                  Confirm & Capture Photo <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </section>
