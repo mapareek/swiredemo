@@ -238,7 +238,7 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
           </div>
 
           <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-bold">
-            Lift estimates compare the recommended execution against a no-activation baseline for this store and period.
+            Lift estimates compare the recommended execution against a no-activation baseline for this store and July projection period.
           </div>
 
           {filteredOpportunities.length === 0 ? (
@@ -325,7 +325,7 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
                         })}
                         className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-2"
                       >
-                        Start Hunt <ArrowRight className="h-4 w-4" />
+                        Capture Execution <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

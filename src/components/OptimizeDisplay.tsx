@@ -356,7 +356,7 @@ export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPh
           {step === "RECOMMENDATION" && (
             <section className="space-y-4">
               <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-bold">
-                Lift estimates compare the recommended execution against a no-activation baseline for this store and period.
+                Lift estimates compare the recommended execution against a no-activation baseline for this store and July projection period.
               </div>
 
               <div className="bg-white border border-slate-200 rounded shadow-xs p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">

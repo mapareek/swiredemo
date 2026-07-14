@@ -149,7 +149,7 @@ export default function Summary({
                 Projected Sales / Velocity Lift
               </span>
               <span className="text-xs text-slate-700 mt-2 block font-bold">
-                Compared against no activation for this store and period.
+                Compared against no activation for this store and July projection period.
               </span>
               {lift > 0 && liftUnits !== undefined ? (
                 <span className="inline-flex mt-3 border rounded px-3 py-2 text-sm font-bold uppercase font-mono bg-emerald-50 text-emerald-700 border-emerald-100">

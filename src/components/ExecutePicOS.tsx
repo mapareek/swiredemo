@@ -582,7 +582,7 @@ function candidateSetForIndex(directive: OnAdDirective, candidateIndex: number) 
     ? sameExecutionCandidates
     : candidates.filter(candidate => candidateMatchesBackendSku(candidate, skuConstraints));
   const rankedCandidates = eligibleCandidates.length ? eligibleCandidates : [activeCandidate];
-  const maxItems = skuConstraints.length > 0 ? Math.max(1, skuConstraints.length) : 4;
+  const maxItems = Math.max(10, skuConstraints.length);
   const seen = new Set<string>();
 
   return rankedCandidates.filter(candidate => {
@@ -1217,7 +1217,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         <main className="flex-1 bg-slate-100 flex flex-col overflow-hidden min-w-0">
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
           <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-bold">
-            Lift estimates compare the recommended execution against a no-activation baseline for this store and period.
+            Lift estimates compare the recommended execution against a no-activation baseline for this store and July projection period.
           </div>
           <section className="bg-white border border-slate-200 rounded p-4 shadow-xs shrink-0">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
