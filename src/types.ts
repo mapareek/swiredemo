@@ -135,6 +135,9 @@ export interface OnAdDirective {
   sourceBox?: string;
   stackRank?: number;
   bestLiftPct?: number;
+  planogramImage?: string;
+  planogramItems?: { sku: string; facings: number }[];
+  additionalItems?: { sku: string; facings: number }[];
 }
 
 export interface PicOSOptimizationCandidate {

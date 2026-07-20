@@ -59,7 +59,7 @@ export default function OptimizeDisplay({ store, onBackToHub, onProceedToAfterPh
   const [step, setStep] = useState<OptimizeStep>("DISPLAY_TYPE");
   const [constraints, setConstraints] = useState<OptimizeConstraints>({
     focus: "Low Sugar",
-    maxSkus: 4,
+    maxSkus: 10,
     brandFocus: "Coca-Cola",
     displayType: initialDisplayType,
     location: initialLocation,

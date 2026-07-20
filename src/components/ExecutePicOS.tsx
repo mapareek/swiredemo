@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Database, Layers, Lock, MapPin, PackageCheck, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Database, Layers, Lock, MapPin, Minus, PackageCheck, Plus, RefreshCw } from "lucide-react";
 import {
   ON_AD_DIRECTIVES,
   PicOSConstraints,
@@ -516,7 +516,7 @@ function directivesForStore(store: StoreInfo): OnAdDirective[] {
     return bestLiftPctForSource(b, b.optimizationCandidates, backendSkuConstraints(bLockedSkus)) - bestLiftPctForSource(a, a.optimizationCandidates, backendSkuConstraints(aLockedSkus));
   });
 
-  return rankedBoxes.map((box, boxIndex) => {
+  const directives: OnAdDirective[] = rankedBoxes.map((box, boxIndex) => {
     const lockedSkus = box.skusStated !== "Not explicitly stated" ? splitSkus(box.skusStated, box.activity, box.packSizesStated) : [];
     const skuConstraints = backendSkuConstraints(lockedSkus);
     const baseCandidateIndex = initialCandidateIndexForSource(box, box.optimizationCandidates || [], skuConstraints);
@@ -557,6 +557,45 @@ function directivesForStore(store: StoreInfo): OnAdDirective[] {
       }))
     };
   });
+
+  if (store.id === "walmart-sc-5189") {
+    const baseEndcap = directives.find(directive => directive.name === "Execute: Walmart End Cap Displays -2L Update");
+    if (baseEndcap) {
+      const planogramDirective: OnAdDirective = {
+        ...baseEndcap,
+        id: `${store.id}-walmart-endcap-2l-planogram`,
+        code: `${baseEndcap.code}A`,
+        stackRank: undefined,
+        name: "Walmart Endcap 2L Display Setup",
+        details: "Set the main Walmart endcap to match the planogram image. Keep the existing 12pk block and core 2L presence while adding the recommended 2L items.",
+        sourceImage: undefined,
+        planogramImage: "/picos-boxes/walmart-endcap-2l-display-planogram.png",
+        planogramItems: [
+          { sku: "SMARTWATER 1L SINGLE BTL", facings: 6 },
+          { sku: "SPRITE 2L SINGLE BTL", facings: 5 },
+          { sku: "DIET COKE CF 2L SINGLE BTL", facings: 4 },
+          { sku: "SEAGRAM'S 2L SINGLE BTL", facings: 2 },
+          { sku: "CHERRY COKE ZERO 2L SINGLE BTL", facings: 3 },
+          { sku: "COKE 2L SINGLE BTL", facings: 6 },
+          { sku: "COCA-COLA ZERO SUGAR 2L SINGLE BTL", facings: 5 },
+          { sku: "SPRITE 12OZ 12PK CAN", facings: 3 },
+          { sku: "COKE 12OZ 12PK CAN", facings: 9 },
+          { sku: "COCA-COLA ZERO SUGAR 12OZ 12PK CAN", facings: 3 }
+        ],
+        additionalItems: [
+          { sku: "FANTA 2L SINGLE BTL", facings: 2 },
+          { sku: "CHERRY COKE ZERO 2L SINGLE BTL", facings: 3 }
+        ]
+      };
+      const insertIndex = directives.indexOf(baseEndcap) + 1;
+      directives.splice(insertIndex, 0, planogramDirective);
+    }
+  }
+
+  return directives.map((directive, index) => ({
+    ...directive,
+    code: directive.code || String(index + 1)
+  }));
 }
 
 function candidateLocation(directive: OnAdDirective, candidate: PicOSOptimizationCandidate | undefined) {
@@ -613,6 +652,24 @@ function buildItems(
   sourceOverride?: PicOSRecommendationSource
 ): PicOSExecutionItem[] {
   const directive = directives.find(d => d.id === directiveId) || directives[0];
+  if (directive.planogramItems?.length) {
+    return directive.planogramItems.map((planogramItem, index) => {
+      const matchingCandidate = (directive.optimizationCandidates || []).find(candidate =>
+        skuIdentity(candidate.sku) === skuIdentity(planogramItem.sku)
+      );
+
+      return {
+        id: `${directive.id}-planogram-${index}`,
+        sku: planogramItem.sku,
+        targetFacings: planogramItem.facings,
+        minFacings: planogramItem.facings,
+        source: "recommended" as PicOSRecommendationSource,
+        priority: "Medium" as const,
+        ...(matchingCandidate ? candidateMetricsAtFacings(matchingCandidate, planogramItem.facings) : {})
+      };
+    });
+  }
+
   const candidates = candidateSetForIndex(directive, candidateIndex);
   const lockedItems: PicOSExecutionItem[] = (directive.lockedSkus || directive.skus.map(sku => sku.name)).map((sku, index) => ({
     id: `${directive.id}-${index}`,
@@ -680,6 +737,23 @@ function candidateMetrics(candidate: PicOSOptimizationCandidate) {
     opportunityUnits: candidate.opportunityUnits,
     baselineUnits: candidate.predictedCurrent,
     idealUnits: candidate.predictedIdeal
+  };
+}
+
+function candidateMetricsAtFacings(candidate: PicOSOptimizationCandidate, facings: number) {
+  const ratio = candidate.facings > 0 ? facings / candidate.facings : 1;
+  const opportunityUnits = parseFloat((candidate.opportunityUnits * ratio).toFixed(1));
+  const baselineUnits = candidate.predictedCurrent;
+  const idealUnits = parseFloat((baselineUnits + opportunityUnits).toFixed(1));
+  const liftPct = baselineUnits > 0
+    ? parseFloat(((opportunityUnits / baselineUnits) * 100).toFixed(1))
+    : parseFloat((candidate.liftPct * ratio).toFixed(1));
+
+  return {
+    liftPct,
+    opportunityUnits,
+    baselineUnits,
+    idealUnits
   };
 }
 
@@ -780,6 +854,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
 
   const totalFacings = items.reduce((sum, item) => sum + item.targetFacings, 0);
   const currentActivityMetrics = activityMetrics(items);
+  const isPlanogramActivity = Boolean(activeDirective.planogramImage);
 
   const resetForDirective = (nextDirectiveId: string) => {
     const nextDirective = directives.find(d => d.id === nextDirectiveId) || directives[0];
@@ -1118,6 +1193,27 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
     })));
   };
 
+  const handleAdjustFacings = (itemId: string, delta: number) => {
+    setItems(prev => sortExecutionItems(prev.map(item => {
+      if (item.id !== itemId) return item;
+
+      const nextFacings = Math.max(1, Math.min(99, item.targetFacings + delta));
+      if (nextFacings === item.targetFacings) return item;
+
+      const matchingCandidate = (activeDirective.optimizationCandidates || [])
+        .filter(candidate => candidateMatchesCurrentExecution(candidate))
+        .find(candidate => skuIdentity(candidate.sku) === skuIdentity(item.sku) && candidate.facings === nextFacings);
+      const nextMetrics = matchingCandidate ? candidateMetrics(matchingCandidate) : scaleItemMetrics(item, nextFacings);
+
+      return {
+        ...item,
+        targetFacings: nextFacings,
+        minFacings: Math.min(item.minFacings, nextFacings),
+        ...nextMetrics
+      };
+    })));
+  };
+
   const constraints: PicOSConstraints = {
     directiveId,
     location,
@@ -1219,6 +1315,64 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
           <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-bold">
             Lift estimates compare the recommended execution against a no-activation baseline for this store and July projection period.
           </div>
+          {isPlanogramActivity ? (
+            <section className="bg-white border border-slate-200 rounded shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                    PicOS Activity Execution Details
+                  </span>
+                  <h2 className="text-lg font-black text-slate-950 mt-2 leading-tight">
+                    {activeDirective.name}
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-2 leading-normal max-w-3xl">
+                    {activeDirective.details}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {currentActivityMetrics.aggregateLiftPct > 0 && (
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1.5 rounded font-mono uppercase">
+                      {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
+                    </span>
+                  )}
+                  <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-1.5 rounded font-mono uppercase">
+                    {totalFacings} total facings
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="rounded border border-slate-200 bg-white overflow-hidden flex justify-center">
+                  <img
+                    src={activeDirective.planogramImage}
+                    alt={`${activeDirective.name} shelf setup`}
+                    className="w-full max-w-[760px] max-h-[420px] object-contain bg-white"
+                  />
+                </div>
+
+                {!!activeDirective.additionalItems?.length && (
+                  <div className="mt-4 rounded border border-slate-200 overflow-hidden">
+                    <div className="p-3 bg-slate-50 border-b border-slate-100">
+                      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                        Additional SKUs to Add
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {activeDirective.additionalItems.map(item => (
+                        <div key={item.sku} className="p-3 flex items-center justify-between gap-4">
+                          <div className="font-bold text-sm text-slate-950">{item.sku}</div>
+                          <div className="text-[10px] bg-slate-900 text-white font-bold px-2 py-1 rounded font-mono uppercase shrink-0">
+                            {item.facings} facings
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : (
+          <>
           <section className="bg-white border border-slate-200 rounded p-4 shadow-xs shrink-0">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
               <div className="min-w-0">
@@ -1359,7 +1513,29 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
 
                   <div>
                     <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">Facings</div>
-                    <div className="text-lg font-black text-slate-950 font-mono leading-tight">{item.targetFacings}</div>
+                    <div className="mt-1 inline-flex items-center rounded border border-slate-200 bg-white overflow-hidden">
+                      <button
+                        type="button"
+                        aria-label={`Decrease ${item.sku} facings`}
+                        disabled={item.targetFacings <= 1}
+                        onClick={() => handleAdjustFacings(item.id, -1)}
+                        className="h-8 w-8 flex items-center justify-center text-slate-700 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <div className="h-8 min-w-9 px-2 border-x border-slate-200 flex items-center justify-center text-lg font-black text-slate-950 font-mono leading-tight">
+                        {item.targetFacings}
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Increase ${item.sku} facings`}
+                        disabled={item.targetFacings >= 99}
+                        onClick={() => handleAdjustFacings(item.id, 1)}
+                        className="h-8 w-8 flex items-center justify-center text-slate-700 hover:bg-slate-50 disabled:text-slate-300 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     <div className="text-[10px] text-slate-500">Min {item.minFacings}</div>
                   </div>
 
@@ -1383,6 +1559,8 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
               ))}
             </div>
           </section>
+          </>
+          )}
 
           </div>
 

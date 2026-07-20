@@ -226,7 +226,8 @@ export function getStoreSignalOptimizeRecommendation(
       b.candidate.facings - a.candidate.facings
     );
 
-  const selected = dedupeBySku(candidates.map(row => row.candidate), constraints.maxSkus);
+  const recommendationLimit = Math.max(10, constraints.maxSkus || 10);
+  const selected = dedupeBySku(candidates.map(row => row.candidate), recommendationLimit);
   const averageLift = selected.length
     ? Math.round(selected.reduce((sum, candidate) => sum + candidate.liftPct, 0) / selected.length)
     : 0;
