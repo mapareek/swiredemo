@@ -125,6 +125,7 @@ export interface OnAdDirective {
   locationCategory?: string;
   sourceFile?: string;
   sourceImage?: string;
+  recommendationImage?: string;
   support?: string;
   confidencePct?: number;
   lockedSkus?: string[];

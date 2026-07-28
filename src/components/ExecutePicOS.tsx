@@ -503,6 +503,15 @@ function rankedLocationRecommendations(
   return [...recommendationsByLocation.values()].sort((a, b) => b.liftPct - a.liftPct);
 }
 
+function recommendationImagePath(storeId: string, activity: string, originalIndex: number) {
+  const slug = activity
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80) || "activity";
+  return `/picos-recommendations/${storeId}/${String(originalIndex).padStart(2, "0")}-${slug}.png`;
+}
+
 export function directivesForStore(store: StoreInfo): OnAdDirective[] {
   const executeBoxes = store.picosBoxes;
 
@@ -523,6 +532,7 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
     const topCandidate = box.optimizationCandidates?.[baseCandidateIndex] || box.optimizationCandidates?.[0];
     const backendLocation = box.locationGuidance !== "Not explicitly stated" ? box.locationGuidance : box.location;
     const stackRank = boxIndex + 1;
+    const originalActivityIndex = store.picosBoxes.indexOf(box) + 1;
 
     return {
       id: `${store.id}-execute-${boxIndex}`,
@@ -542,6 +552,7 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
       locationCategory: topCandidate?.location || box.location,
       sourceFile: box.sourceFile,
       sourceImage: box.sourceImage,
+      recommendationImage: recommendationImagePath(store.id, box.activity, originalActivityIndex),
       support: box.support,
       confidencePct: box.confidencePct,
       sourceBox: box.box,
@@ -569,6 +580,7 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
         name: "Walmart Endcap 2L Display Setup",
         details: "Set the main Walmart endcap to match the planogram image. Keep the existing 12pk block and core 2L presence while adding the recommended 2L items.",
         sourceImage: undefined,
+        recommendationImage: "/picos-recommendations/walmart-sc-5189/02-execute-walmart-end-cap-displays-2l-update.png",
         planogramImage: "/picos-boxes/walmart-endcap-2l-display-planogram.png",
         planogramItems: [
           { sku: "SMARTWATER 1L SINGLE BTL", facings: 6 },
@@ -854,9 +866,25 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
 
   const totalFacings = items.reduce((sum, item) => sum + item.targetFacings, 0);
   const currentActivityMetrics = activityMetrics(items);
-  const isPlanogramActivity = Boolean(activeDirective.planogramImage);
+  const recommendationVisual = activeDirective.planogramImage || activeDirective.recommendationImage || activeDirective.sourceImage;
+  const isPlanogramActivity = Boolean(recommendationVisual);
   const planogramShelves = useMemo(() => {
     const planogramItems = activeDirective.planogramItems || [];
+    if (planogramItems.length === 0) {
+      const sectionSize = 3;
+      const genericSections = [];
+      for (let index = 0; index < items.length; index += sectionSize) {
+        genericSections.push({
+          label: `Shelf ${genericSections.length + 1}`,
+          items: items.slice(index, index + sectionSize).map(item => ({
+            sku: item.sku,
+            facings: item.targetFacings
+          }))
+        });
+      }
+      return genericSections;
+    }
+
     const shelfSizes = [2, 3, 1, 2, 1, 1];
     let cursor = 0;
     return shelfSizes
@@ -869,7 +897,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         };
       })
       .filter(shelf => shelf.items.length > 0);
-  }, [activeDirective]);
+  }, [activeDirective, items]);
 
   const resetForDirective = (nextDirectiveId: string) => {
     const nextDirective = directives.find(d => d.id === nextDirectiveId) || directives[0];
@@ -1352,9 +1380,9 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
               <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-4 items-start">
                 <div className="rounded-lg border border-slate-200 bg-white min-h-[380px] flex items-center justify-center p-4">
                   <img
-                    src={activeDirective.planogramImage}
+                    src={recommendationVisual}
                     alt={`${activeDirective.name} shelf setup`}
-                    className="w-full max-w-[560px] max-h-[360px] object-contain bg-white"
+                    className="w-full max-w-[600px] max-h-[360px] object-contain bg-white"
                   />
                 </div>
 
@@ -1470,6 +1498,56 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
               </div>
             </div>
           </section>
+
+          {activeDirective.recommendationImage && (
+            <section className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_260px] gap-3 shrink-0">
+              <div className="bg-white border border-slate-200 rounded shadow-xs overflow-hidden">
+                <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-3">
+                  <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono flex items-center gap-1">
+                    <PackageCheck className="h-3.5 w-3.5 text-slate-400" />
+                    Recommended Display
+                  </h3>
+                  <span className="text-[10px] bg-slate-900 text-white font-bold px-2 py-1 rounded font-mono uppercase shrink-0">
+                    {totalFacings} facings
+                  </span>
+                </div>
+                <div className="min-h-[260px] max-h-[420px] p-4 flex items-center justify-center bg-white">
+                  <img
+                    src={activeDirective.recommendationImage}
+                    alt={`${activeDirective.name} recommended display`}
+                    className="w-full max-h-[380px] object-contain bg-white"
+                  />
+                </div>
+              </div>
+
+              <aside className="bg-white border border-slate-200 rounded p-4 shadow-xs self-start">
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />
+                      Ideal Location
+                    </span>
+                    <div className="mt-2 text-lg font-black text-slate-950 leading-tight">{location}</div>
+                  </div>
+                  <div className="border-t border-slate-100 pt-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono flex items-center gap-1">
+                      <Layers className="h-3.5 w-3.5" />
+                      POI Type
+                    </span>
+                    <div className="mt-2 text-lg font-black text-slate-950 leading-tight">{poiType}</div>
+                  </div>
+                  {currentActivityMetrics.aggregateLiftPct > 0 && (
+                    <div className="border-t border-slate-100 pt-4">
+                      <div className="inline-flex text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold px-2 py-1.5 rounded font-mono uppercase">
+                        {liftLabel(currentActivityMetrics.aggregateLiftPct, currentActivityMetrics.totalOpportunityUnits)}
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-2">Estimated sales lift vs. no display</div>
+                    </div>
+                  )}
+                </div>
+              </aside>
+            </section>
+          )}
 
           <section className="grid grid-cols-1 xl:grid-cols-2 gap-3 shrink-0">
             <div className="bg-white border border-slate-200 rounded p-4 shadow-xs">
