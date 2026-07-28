@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { FlowType, IMAGES, StoreInfo } from "../types";
+import React, { useEffect, useRef, useState } from "react";
+import { FlowType, StoreInfo } from "../types";
 import { ArrowLeft, Check, RefreshCw } from "lucide-react";
 
 interface PhotoCaptureProps {
@@ -13,19 +13,81 @@ interface PhotoCaptureProps {
 export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCancel }: PhotoCaptureProps) {
   const [isCaptured, setIsCaptured] = useState(false);
   const [isShutterFlashing, setIsShutterFlashing] = useState(false);
-  const cameraMockImage = IMAGES.cameraAfter;
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const direction = flowType === "EXECUTE_PICOS"
     ? "Capture the completed PicOS activity."
     : flowType === "HUNT_SPACE"
       ? "Capture the display opportunity."
       : "Capture the optimized display.";
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const startCamera = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError("Camera access is not available in this browser.");
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
+          audio: false
+        });
+
+        if (!isMounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+      } catch {
+        if (isMounted) {
+          setCameraError("Unable to open camera. Check browser camera permissions.");
+        }
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      isMounted = false;
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    };
+  }, []);
+
   const handleShutterClick = () => {
     setIsShutterFlashing(true);
     setTimeout(() => {
+      const video = videoRef.current;
+      if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        setCapturedImage(canvas.toDataURL("image/jpeg", 0.92));
+      }
       setIsShutterFlashing(false);
       setIsCaptured(true);
     }, 400);
+  };
+
+  const handleRetake = () => {
+    setCapturedImage(null);
+    setIsCaptured(false);
   };
 
   return (
@@ -57,14 +119,25 @@ export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCa
         )}
 
         <div className="relative w-full max-w-5xl aspect-4/3 rounded overflow-hidden bg-slate-900">
-          <img
-            src={cameraMockImage}
-            alt="Camera"
-            className={`w-full h-full object-cover transition-filter duration-350 ${
-              isCaptured ? "contrast-105 brightness-100" : "contrast-95 brightness-90 saturate-85"
-            }`}
-            referrerPolicy="no-referrer"
-          />
+          {capturedImage ? (
+            <img
+              src={capturedImage}
+              alt="Captured display"
+              className="w-full h-full object-cover contrast-105 brightness-100"
+            />
+          ) : cameraError ? (
+            <div className="w-full h-full flex items-center justify-center bg-slate-950 text-white text-sm px-6 text-center">
+              {cameraError}
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover contrast-95 brightness-90 saturate-85"
+              playsInline
+              muted
+              autoPlay
+            />
+          )}
 
           {isCaptured && (
             <div className="absolute inset-0 bg-slate-950/45 flex items-center justify-center">
@@ -81,7 +154,8 @@ export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCa
           <button
             id="camera-shutter"
             onClick={handleShutterClick}
-            className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center hover:bg-white/10 active:bg-white/20 cursor-pointer group transition-all"
+            disabled={Boolean(cameraError)}
+            className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center hover:bg-white/10 active:bg-white/20 cursor-pointer group transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <div className="w-12 h-12 rounded-full bg-red-600 group-hover:scale-95 transition-all"></div>
           </button>
@@ -96,7 +170,7 @@ export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCa
             </button>
             <button
               id="retake-photo"
-              onClick={() => setIsCaptured(false)}
+              onClick={handleRetake}
               className="bg-transparent hover:bg-slate-900 text-slate-300 font-semibold py-3 px-6 rounded text-xs uppercase tracking-wider font-mono cursor-pointer border border-slate-700 transition-colors flex items-center justify-center gap-1.5"
             >
               <RefreshCw className="h-3.5 w-3.5" /> Retake

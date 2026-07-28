@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FlowLiftMetrics, FlowType, Screen, PicOSConstraints, OptimizeConstraints, RemovalSurveyResult, StoreInfo } from "./types";
+import { ExecutionCheckResult, FlowLiftMetrics, FlowType, Screen, PicOSConstraints, OptimizeConstraints, StoreInfo } from "./types";
 import { DEFAULT_STORE } from "./data/picosStores";
 import StoreSelector from "./components/StoreSelector";
 import StoreActionHub from "./components/StoreActionHub";
@@ -8,13 +8,11 @@ import ExecutePicOS from "./components/ExecutePicOS";
 import OptimizeDisplay from "./components/OptimizeDisplay";
 import PhotoCapture from "./components/PhotoCapture";
 import RemovalSurvey from "./components/RemovalSurvey";
+import MerchandiserExport from "./components/MerchandiserExport";
 import Summary from "./components/Summary";
-import SignInScreen from "./components/SignInScreen";
-import { Sparkles, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 export default function App() {
-  const [isSignedIn, setIsSignedIn] = useState(false);
-
   // Navigation State
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.STORE_SELECTOR);
   const [selectedStore, setSelectedStore] = useState<StoreInfo>(DEFAULT_STORE);
@@ -24,7 +22,7 @@ export default function App() {
   const [picosConstraints, setPicosConstraints] = useState<PicOSConstraints | null>(null);
   const [optimizeConstraints, setOptimizeConstraints] = useState<OptimizeConstraints | null>(null);
   const [flowLiftMetrics, setFlowLiftMetrics] = useState<FlowLiftMetrics | null>(null);
-  const [removalSurvey, setRemovalSurvey] = useState<RemovalSurveyResult | null>(null);
+  const [executionCheck, setExecutionCheck] = useState<ExecutionCheckResult | null>(null);
   
   // Toast Alert Notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -46,9 +44,9 @@ export default function App() {
     setPicosConstraints(null);
     setOptimizeConstraints(null);
     setFlowLiftMetrics(null);
-    setRemovalSurvey(null);
+    setExecutionCheck(null);
     setCurrentScreen(Screen.ACTION_HUB);
-    triggerToast(`Store Visit Session Commenced successfully at ${store.storeName}`);
+    triggerToast(`Visit started at ${store.storeName}`);
   };
 
   const handleNavigate = (screen: Screen) => {
@@ -84,7 +82,7 @@ export default function App() {
     setFlowType("EXECUTE_PICOS");
     setPicosConstraints(constraints);
     setFlowLiftMetrics(null);
-    setRemovalSurvey(null);
+    setExecutionCheck(null);
     setCurrentScreen(Screen.AFTER_PHOTO);
   };
 
@@ -98,17 +96,22 @@ export default function App() {
   const handleConfirmAfterPhoto = () => {
     if (flowType === "EXECUTE_PICOS") {
       setCurrentScreen(Screen.REMOVAL_SURVEY);
-      triggerToast("After Photo stamped & saved. Complete removal survey.");
+      triggerToast("After Photo stamped & saved. Confirm execution status.");
     } else {
       setCurrentScreen(Screen.SUMMARY);
       triggerToast("After Photo stamped & saved. Recalculating compliance.");
     }
   };
 
-  const handleSubmitRemovalSurvey = (result: RemovalSurveyResult) => {
-    setRemovalSurvey(result);
+  const handleSubmitExecutionCheck = (result: ExecutionCheckResult) => {
+    setExecutionCheck(result);
+    if (result.executed === false && result.reason === "Merchandiser visit needed") {
+      setCurrentScreen(Screen.MERCHANDISER_EXPORT);
+      triggerToast("Execution status saved. Preparing merchandiser PDF handoff.");
+      return;
+    }
     setCurrentScreen(Screen.SUMMARY);
-    triggerToast("Removal survey saved. Preparing PicOS summary.");
+    triggerToast("Execution status saved. Preparing PicOS summary.");
   };
 
   // Finish workflow and return to hub
@@ -128,12 +131,8 @@ export default function App() {
     setPicosConstraints(null);
     setOptimizeConstraints(null);
     setFlowLiftMetrics(null);
-    setRemovalSurvey(null);
+    setExecutionCheck(null);
   };
-
-  if (!isSignedIn) {
-    return <SignInScreen onSignIn={() => setIsSignedIn(true)} />;
-  }
 
   return (
     <div className="w-full h-screen font-sans bg-slate-50 relative select-none">
@@ -201,10 +200,18 @@ export default function App() {
 
       {currentScreen === Screen.REMOVAL_SURVEY && (
         <RemovalSurvey
+          onBackToPhoto={() => setCurrentScreen(Screen.AFTER_PHOTO)}
+          onSubmit={handleSubmitExecutionCheck}
+        />
+      )}
+
+      {currentScreen === Screen.MERCHANDISER_EXPORT && (
+        <MerchandiserExport
           store={selectedStore}
           picosConstraints={picosConstraints}
-          onBackToPhoto={() => setCurrentScreen(Screen.AFTER_PHOTO)}
-          onSubmit={handleSubmitRemovalSurvey}
+          executionCheck={executionCheck}
+          onBack={() => setCurrentScreen(Screen.REMOVAL_SURVEY)}
+          onContinue={() => setCurrentScreen(Screen.SUMMARY)}
         />
       )}
 
@@ -215,7 +222,7 @@ export default function App() {
           picosConstraints={picosConstraints}
           optimizeConstraints={optimizeConstraints}
           flowLiftMetrics={flowLiftMetrics}
-          removalSurvey={removalSurvey}
+          executionCheck={executionCheck}
           onFinish={handleFinishWorkflow}
           onCloseVisit={handleCloseVisitSession}
         />

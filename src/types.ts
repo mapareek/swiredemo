@@ -7,6 +7,7 @@ export enum Screen {
   BEFORE_PHOTO = "BEFORE_PHOTO",
   AFTER_PHOTO = "AFTER_PHOTO",
   REMOVAL_SURVEY = "REMOVAL_SURVEY",
+  MERCHANDISER_EXPORT = "MERCHANDISER_EXPORT",
   SUMMARY = "SUMMARY"
 }
 
@@ -101,14 +102,10 @@ export interface PicOSOverride {
   reason: string;
 }
 
-export interface RemovalSurveyItem {
-  product: string;
-  casesRemoved: number;
-}
-
-export interface RemovalSurveyResult {
-  removedItems: boolean;
-  items: RemovalSurveyItem[];
+export interface ExecutionCheckResult {
+  executed: boolean;
+  reason?: "Store manager approval" | "Merchandiser visit needed" | "Other";
+  otherReason?: string;
 }
 
 export interface OnAdDirective {

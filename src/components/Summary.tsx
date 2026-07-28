@@ -1,4 +1,4 @@
-import { FlowLiftMetrics, FlowType, IMAGES, OptimizeConstraints, PicOSConstraints, RemovalSurveyResult, StoreInfo } from "../types";
+import { ExecutionCheckResult, FlowLiftMetrics, FlowType, IMAGES, OptimizeConstraints, PicOSConstraints, StoreInfo } from "../types";
 import { getStoreSignalOptimizeRecommendation } from "../utils/storeSignalEngine";
 import { Check, CheckCircle, TrendingUp } from "lucide-react";
 
@@ -8,7 +8,7 @@ interface SummaryProps {
   picosConstraints?: PicOSConstraints | null;
   optimizeConstraints?: OptimizeConstraints | null;
   flowLiftMetrics?: FlowLiftMetrics | null;
-  removalSurvey?: RemovalSurveyResult | null;
+  executionCheck?: ExecutionCheckResult | null;
   onFinish: () => void;
   onCloseVisit: () => void;
 }
@@ -60,7 +60,7 @@ export default function Summary({
   picosConstraints,
   optimizeConstraints,
   flowLiftMetrics,
-  removalSurvey,
+  executionCheck,
   onFinish,
   onCloseVisit
 }: SummaryProps) {
@@ -113,7 +113,7 @@ export default function Summary({
             <span className="text-slate-300">-&gt;</span>
             <span>2. After Photo</span>
             <span className="text-slate-300">-&gt;</span>
-            <span>3. Removal Survey</span>
+            <span>3. Execution Check</span>
             <span className="text-slate-300">-&gt;</span>
             <span className="text-red-600 uppercase border-b border-red-600 pb-0.5">4. Finish</span>
           </div>
@@ -137,7 +137,14 @@ export default function Summary({
           <div className="flex items-start gap-3">
             <Check className="h-6 w-6 text-emerald-600 shrink-0 mt-0.5 bg-emerald-100 rounded-full p-1" />
             <div>
-              <h3 className="font-bold text-emerald-900 text-base">Execution Saved and Confirmed</h3>
+              <h3 className="font-bold text-emerald-900 text-base">
+                {executionCheck?.executed === false ? "Execution Status Saved" : "Execution Saved and Confirmed"}
+              </h3>
+              {executionCheck?.executed === false && (
+                <p className="text-sm text-emerald-800 mt-1">
+                  Not executed: {executionCheck.reason === "Other" ? executionCheck.otherReason : executionCheck.reason}
+                </p>
+              )}
             </div>
           </div>
         </div>
