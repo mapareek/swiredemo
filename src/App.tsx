@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ActivityOutcome, ExecutionCheckResult, FlowLiftMetrics, FlowType, Screen, PicOSConstraints, OptimizeConstraints, StoreInfo } from "./types";
 import { DEFAULT_STORE } from "./data/picosStores";
+import SignInScreen from "./components/SignInScreen";
 import StoreSelector from "./components/StoreSelector";
 import StoreActionHub from "./components/StoreActionHub";
 import HuntWorkflow from "./components/HuntWorkflow";
@@ -14,7 +15,7 @@ import { Check, X } from "lucide-react";
 
 export default function App() {
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.STORE_SELECTOR);
+  const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.SIGN_IN);
   const [selectedStore, setSelectedStore] = useState<StoreInfo>(DEFAULT_STORE);
   
   // Workflow coordination state
@@ -61,6 +62,11 @@ export default function App() {
 
   const handleNavigate = (screen: Screen) => {
     setCurrentScreen(screen);
+  };
+
+  const handleSignIn = () => {
+    setCurrentScreen(Screen.STORE_SELECTOR);
+    triggerToast("Signed in. Select a store to begin.");
   };
 
   const handleBackToHub = () => {
@@ -203,6 +209,10 @@ export default function App() {
     <div className="w-full h-screen font-sans bg-slate-50 relative select-none">
       
       {/* RENDER ACTIVE SCREEN */}
+      {currentScreen === Screen.SIGN_IN && (
+        <SignInScreen onSignIn={handleSignIn} />
+      )}
+
       {currentScreen === Screen.STORE_SELECTOR && (
         <StoreSelector
           selectedStore={selectedStore}
