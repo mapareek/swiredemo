@@ -24,6 +24,8 @@ type HuntOpportunity = {
   products: CandidateWithBox[];
 };
 
+type StatusFilter = "All" | "To do" | "Executed" | "Covered";
+
 function signedPercent(value: number) {
   return `${value > 0 ? "+" : ""}${value}%`;
 }
@@ -127,14 +129,10 @@ function getHuntOpportunities(store: StoreInfo): HuntOpportunity[] {
 export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, onSelectAction }: HuntWorkflowProps) {
   const [locationFilter, setLocationFilter] = useState("All");
   const [displayTypeFilter, setDisplayTypeFilter] = useState("All");
-  const [showCovered, setShowCovered] = useState(true);
   const [sortBy, setSortBy] = useState<"lift" | "units">("units");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
 
   const opportunities = useMemo(() => getHuntOpportunities(store), [store]);
-  const coveredCount = useMemo(
-    () => opportunities.filter(opportunity => opportunity.coveredByPicos).length,
-    [opportunities]
-  );
 
   const locations = useMemo(
     () => ["All", ...Array.from(new Set(opportunities.map(opportunity => opportunity.location))).sort()],
@@ -150,14 +148,20 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
     return opportunities
       .filter(opportunity => locationFilter === "All" || opportunity.location === locationFilter)
       .filter(opportunity => displayTypeFilter === "All" || opportunity.displayType === displayTypeFilter)
-      .filter(opportunity => showCovered || !opportunity.coveredByPicos)
+      .filter(opportunity => {
+        const isExecuted = Boolean(huntOutcomes[opportunity.id]);
+        if (statusFilter === "To do") return !isExecuted && !opportunity.coveredByPicos;
+        if (statusFilter === "Executed") return isExecuted;
+        if (statusFilter === "Covered") return opportunity.coveredByPicos;
+        return true;
+      })
       .sort((a, b) => {
         if (sortBy === "units") {
           return b.totalUnits - a.totalUnits || b.bestLiftPct - a.bestLiftPct;
         }
         return b.bestLiftPct - a.bestLiftPct || b.totalUnits - a.totalUnits;
       });
-  }, [displayTypeFilter, locationFilter, opportunities, showCovered, sortBy]);
+  }, [displayTypeFilter, huntOutcomes, locationFilter, opportunities, sortBy, statusFilter]);
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC]">
@@ -189,7 +193,7 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
               <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Filters</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_180px_190px] gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_160px_160px] gap-3">
               <label className="space-y-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Location</span>
                 <select
@@ -228,14 +232,18 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
                 </select>
               </label>
 
-              <label className="h-11 self-end rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 cursor-pointer flex items-center justify-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={showCovered}
-                  onChange={event => setShowCovered(event.target.checked)}
-                  className="h-4 w-4 accent-slate-900"
-                />
-                Show covered spots ({coveredCount})
+              <label className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={event => setStatusFilter(event.target.value as StatusFilter)}
+                  className="w-full h-11 rounded border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
+                >
+                  <option value="All">All</option>
+                  <option value="To do">To do</option>
+                  <option value="Executed">Executed</option>
+                  <option value="Covered">Covered</option>
+                </select>
               </label>
             </div>
           </section>
@@ -324,14 +332,14 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
                             : "bg-red-600 hover:bg-red-700 text-white cursor-pointer"
                         }`}
                       >
-                        {isConfirmed ? "Confirmed" : "Confirm Display"} <ArrowRight className="h-4 w-4" />
+                        {isConfirmed ? "Executed" : "Confirm Display"} <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
                   {isConfirmed && (
                     <div className="px-4 py-3 border-t border-emerald-100 bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-2">
                       <Check className="h-4 w-4 shrink-0" />
-                      <span>Confirmed</span>
+                      <span>Executed</span>
                       <span className="text-emerald-500">-</span>
                       <span className="font-medium">{formatOutcomeTimestamp(confirmedAt)}</span>
                     </div>
