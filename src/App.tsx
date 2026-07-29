@@ -114,7 +114,6 @@ export default function App() {
   const handleConfirmAfterPhoto = () => {
     if (flowType === "EXECUTE_PICOS") {
       setCurrentScreen(Screen.EXECUTE_PICOS);
-      triggerToast("Outcome saved.", "success");
       return;
     }
     if (flowType === "HUNT_SPACE") {
@@ -158,7 +157,6 @@ export default function App() {
       return;
     }
     setCurrentScreen(Screen.EXECUTE_PICOS);
-    triggerToast("Outcome saved.", "success");
   };
 
   const handleUndoActivityOutcome = (directiveId: string) => {
@@ -292,7 +290,6 @@ export default function App() {
           onBack={() => setCurrentScreen(Screen.REMOVAL_SURVEY)}
           onContinue={() => {
             setCurrentScreen(Screen.EXECUTE_PICOS);
-            triggerToast("Outcome saved.", "success");
           }}
         />
       )}

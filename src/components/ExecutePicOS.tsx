@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CircleMinus, Database, Layers, Lock, MapPin, Minus, PackageCheck, Plus, RefreshCw, Undo2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleMinus, Database, Layers, Lock, MapPin, Minus, PackageCheck, Plus, RefreshCw } from "lucide-react";
 import {
   ActivityOutcome,
   ON_AD_DIRECTIVES,
@@ -796,6 +796,12 @@ function outcomeReasonLabel(outcome: ActivityOutcome) {
   return outcome.reason === "Other" ? outcome.otherReason || "Other" : outcome.reason || "Not executed";
 }
 
+function outcomeFooterLabel(outcome: ActivityOutcome) {
+  const timestamp = formatOutcomeTimestamp(outcome.recordedAt);
+  if (outcome.executed) return `Executed ${timestamp}`;
+  return `Not executed - ${outcomeReasonLabel(outcome)} - ${timestamp}`;
+}
+
 function candidateMetrics(candidate: PicOSOptimizationCandidate) {
   return {
     liftPct: candidate.liftPct,
@@ -887,16 +893,17 @@ export default function ExecutePicOS({
   onProceedToAfterPhoto
 }: ExecutePicOSProps) {
   const directives = useMemo(() => directivesForStore(store), [store]);
-  const [directiveId, setDirectiveId] = useState(directives[0].id);
+  const initialDirectiveId = lastActivityOutcomeId && directives.some(directive => directive.id === lastActivityOutcomeId)
+    ? lastActivityOutcomeId
+    : directives[0].id;
+  const [directiveId, setDirectiveId] = useState(initialDirectiveId);
   const [candidateIndex, setCandidateIndex] = useState(() => initialCandidateIndexForSource(
     directives[0],
     directives[0].optimizationCandidates || [],
     backendSkuConstraints(directives[0].lockedSkus || directives[0].skus.map(sku => sku.name))
   ));
   const activeDirective = directives.find(d => d.id === directiveId) || directives[0];
-  const lastActivityOutcome = lastActivityOutcomeId ? activityOutcomes[lastActivityOutcomeId] : undefined;
   const activeActivityOutcome = activityOutcomes[activeDirective.id];
-  const undoableActivityOutcome = activeActivityOutcome || lastActivityOutcome;
   const activeCandidate = activeDirective.optimizationCandidates?.[candidateIndex] || activeDirective.optimizationCandidates?.[0];
   const activeLocationConstraints = useMemo(() => extractAllowedLocations(activeDirective), [activeDirective]);
   const activeSkuConstraints = useMemo(
@@ -1797,24 +1804,49 @@ export default function ExecutePicOS({
 
           </div>
 
-          <footer className="border-t border-slate-200 bg-white px-5 py-4 flex items-center justify-end gap-4 shrink-0 shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
-            {undoableActivityOutcome && onUndoActivityOutcome && (
+          <footer className="border-t border-slate-200 bg-white px-5 py-4 flex items-center justify-between gap-4 shrink-0 shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
+            <div className="min-w-0">
+              {activeActivityOutcome && (
+                <div className="bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-md shadow-lg border border-slate-800 flex items-center gap-3">
+                  <span className="w-5 h-5 bg-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                    <Check className="h-3.5 w-3.5 text-white" />
+                  </span>
+                  <span>Outcome saved</span>
+                </div>
+              )}
+            </div>
+
+            {activeActivityOutcome ? (
+              <div className="flex items-center justify-end gap-4 min-w-0">
+                <div className={`flex items-center gap-2 text-sm font-black truncate ${
+                  activeActivityOutcome.executed ? "text-emerald-700" : "text-orange-700"
+                }`}>
+                  {activeActivityOutcome.executed ? (
+                    <Check className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <CircleMinus className="h-4 w-4 shrink-0" />
+                  )}
+                  <span className="truncate">{outcomeFooterLabel(activeActivityOutcome)}</span>
+                </div>
+                {onUndoActivityOutcome && (
+                  <button
+                    id="undo-last-picos-outcome"
+                    onClick={() => onUndoActivityOutcome(activeActivityOutcome.directiveId)}
+                    className="border border-slate-300 hover:bg-slate-50 text-slate-800 font-extrabold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-1.5 transition-colors shrink-0"
+                  >
+                    Undo
+                  </button>
+                )}
+              </div>
+            ) : (
               <button
-                id="undo-last-picos-outcome"
-                onClick={() => onUndoActivityOutcome(undoableActivityOutcome.directiveId)}
-                className="border border-slate-300 hover:bg-slate-50 text-slate-800 font-extrabold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-1.5 transition-colors"
+                id="proceed-after-picos"
+                onClick={() => onProceedToAfterPhoto(constraints)}
+                className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold py-3 px-8 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
               >
-                <Undo2 className="h-4 w-4" />
-                Undo
+                Record Outcome <ArrowRight className="h-4.5 w-4.5" />
               </button>
             )}
-            <button
-              id="proceed-after-picos"
-              onClick={() => onProceedToAfterPhoto(constraints)}
-              className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold py-3 px-8 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
-            >
-              Record Outcome <ArrowRight className="h-4.5 w-4.5" />
-            </button>
           </footer>
         </main>
       </div>
