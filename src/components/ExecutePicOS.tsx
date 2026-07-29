@@ -1382,7 +1382,7 @@ export default function ExecutePicOS({
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-[300px] bg-white border-r border-slate-200 flex flex-col overflow-hidden shrink-0">
+        <aside className="w-[360px] bg-white border-r border-slate-200 flex flex-col overflow-hidden shrink-0">
           <div className="p-3 border-b border-slate-100 bg-slate-50/70 shrink-0">
             <h3 className="font-bold text-slate-900 text-[10px] uppercase tracking-wider font-mono flex items-center gap-1">
               <Database className="h-3.5 w-3.5 text-slate-500" />
@@ -1423,7 +1423,7 @@ export default function ExecutePicOS({
                           {directive.mode}
                         </span>
                         {(hasPositiveLift(directive.bestLiftPct) || listMetrics.opportunityUnits > 0) && (
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded font-mono uppercase shrink-0 whitespace-nowrap bg-emerald-50 text-emerald-700 border border-emerald-100">
                             +{Math.round(directive.bestLiftPct || listMetrics.liftPct || 0)}% / +{Math.round(listMetrics.opportunityUnits)} units
                           </span>
                         )}
