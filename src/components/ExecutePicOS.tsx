@@ -898,6 +898,25 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
       })
       .filter(shelf => shelf.items.length > 0);
   }, [activeDirective, items]);
+  const additionalBuildItems = useMemo(() => {
+    if (activeDirective.additionalItems?.length) return activeDirective.additionalItems;
+
+    const buildIdentities = new Set(items.map(item => skuIdentity(item.sku)));
+    const seen = new Set<string>();
+    return (activeDirective.optimizationCandidates || [])
+      .filter(candidate => {
+        const key = skuIdentity(candidate.sku);
+        if (buildIdentities.has(key) || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)
+      .slice(0, 3)
+      .map(candidate => ({
+        sku: candidate.sku,
+        facings: candidate.facings
+      }));
+  }, [activeDirective, items]);
 
   const resetForDirective = (nextDirectiveId: string) => {
     const nextDirective = directives.find(d => d.id === nextDirectiveId) || directives[0];
@@ -1377,27 +1396,27 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-4 items-start">
-                <div className="rounded-lg border border-slate-200 bg-white min-h-[380px] flex items-center justify-center p-4">
+              <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-4 items-stretch">
+                <div className="rounded-lg border border-slate-200 bg-white min-h-[520px] h-full flex items-center justify-center p-4 lg:p-6">
                   <img
                     src={recommendationVisual}
                     alt={`${activeDirective.name} shelf setup`}
-                    className="w-full max-w-[600px] max-h-[360px] object-contain bg-white"
+                    className="w-full max-w-[760px] max-h-[500px] object-contain bg-white"
                   />
                 </div>
 
-                <aside className="self-start space-y-4">
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                <aside className="self-stretch space-y-4 flex flex-col">
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
                     <div className="flex items-center gap-2 text-slate-500">
-                      <MapPin className="h-4 w-4" />
-                      <h3 className="text-xs font-semibold uppercase tracking-wider">Ideal Location</h3>
+                      <MapPin className="h-3.5 w-3.5" />
+                      <h3 className="text-[10px] font-semibold uppercase tracking-wider">Ideal Location</h3>
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                      <div className="text-2xl font-bold text-slate-950 leading-none">{location}</div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="text-xl font-bold text-slate-950 leading-tight">{location}</div>
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="rounded-lg border border-slate-200 bg-white p-4 flex-1">
                     <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
                       <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
                         Build List
@@ -1425,7 +1444,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                 </aside>
               </div>
 
-              {!!activeDirective.additionalItems?.length && (
+              {!!additionalBuildItems.length && (
                 <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
                   <div className="px-4 py-3 border-b border-slate-100">
                     <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
@@ -1433,7 +1452,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
                     </h3>
                   </div>
                   <div className="divide-y divide-slate-100">
-                    {activeDirective.additionalItems.map(item => (
+                    {additionalBuildItems.map(item => (
                       <div key={item.sku} className="px-4 py-3 flex items-center justify-between gap-4">
                         <div className="font-bold text-xs text-slate-950">{item.sku}</div>
                         <div className="text-[10px] text-slate-500 font-mono shrink-0">
