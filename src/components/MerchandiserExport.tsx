@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Download, FileText } from "lucide-react";
 import { ExecutionCheckResult, PicOSConstraints, StoreInfo } from "../types";
 import { directivesForStore } from "./ExecutePicOS";
@@ -26,6 +26,19 @@ function planogramShelves(items: { sku: string; facings: number }[]) {
   return [{ label: "Recommended Facings", items }];
 }
 
+function escapeHtml(value: string | number | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function absoluteAssetUrl(path: string) {
+  return new URL(path, window.location.origin).href;
+}
+
 export default function MerchandiserExport({
   store,
   picosConstraints,
@@ -46,9 +59,254 @@ export default function MerchandiserExport({
   const notExecutedReason = executionCheck?.reason === "Other"
     ? executionCheck.otherReason
     : executionCheck?.reason;
+  const recommendationVisual = directive.planogramImage || directive.recommendationImage || directive.sourceImage;
+  const [imageStatus, setImageStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+
+  useEffect(() => {
+    setImageStatus(recommendationVisual ? "loading" : "idle");
+  }, [recommendationVisual]);
 
   const handleDownloadPdf = () => {
-    window.print();
+    if (imageStatus === "loading") return;
+    const pdfWindow = window.open("", "_blank");
+    if (!pdfWindow) return;
+
+    const imageUrl = recommendationVisual ? absoluteAssetUrl(recommendationVisual) : "";
+    const shelvesHtml = shelves.map(shelf => `
+      <section class="shelf">
+        <div class="shelf-title">${escapeHtml(shelf.label)}</div>
+        ${shelf.items.map(item => `
+          <div class="build-row">
+            <span>${escapeHtml(item.sku)}</span>
+            <strong>${escapeHtml(item.facings)}</strong>
+          </div>
+        `).join("")}
+      </section>
+    `).join("");
+    const additionalItemsHtml = directive.additionalItems?.length ? `
+      <section class="additional">
+        <h3>Additional SKUs to Add</h3>
+        ${directive.additionalItems.map(item => `
+          <div class="additional-row">
+            <span>${escapeHtml(item.sku)}</span>
+            <strong>${escapeHtml(item.facings)} facings</strong>
+          </div>
+        `).join("")}
+      </section>
+    ` : "";
+
+    pdfWindow.document.open();
+    pdfWindow.document.write(`<!doctype html>
+      <html>
+        <head>
+          <title>${escapeHtml(directive.name)} - Merchandiser Handoff</title>
+          <style>
+            @page { margin: 0.35in; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              background: #f8fafc;
+              color: #0f172a;
+              font-family: Arial, Helvetica, sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .page {
+              width: 100%;
+              max-width: 1040px;
+              margin: 24px auto;
+              background: white;
+              border: 1px solid #dbe3ef;
+              border-radius: 10px;
+              overflow: hidden;
+            }
+            header {
+              display: flex;
+              justify-content: space-between;
+              gap: 24px;
+              padding: 24px;
+              border-bottom: 1px solid #e2e8f0;
+            }
+            .eyebrow {
+              color: #dc0024;
+              font-size: 11px;
+              font-weight: 800;
+              letter-spacing: 0.08em;
+              text-transform: uppercase;
+            }
+            h1 {
+              margin: 12px 0 6px;
+              font-size: 22px;
+              line-height: 1.2;
+            }
+            .store, .details, .meta {
+              color: #475569;
+              font-size: 13px;
+              line-height: 1.45;
+            }
+            .meta {
+              min-width: 180px;
+              text-align: right;
+            }
+            .meta strong {
+              display: block;
+              color: #0f172a;
+              margin-bottom: 3px;
+            }
+            main {
+              padding: 24px;
+            }
+            .content {
+              display: grid;
+              grid-template-columns: minmax(0, 1fr) 270px;
+              gap: 18px;
+              margin-top: 20px;
+              align-items: start;
+            }
+            .visual {
+              min-height: 400px;
+              border: 1px solid #dbe3ef;
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 18px;
+              background: white;
+            }
+            .visual img {
+              max-width: 100%;
+              max-height: 380px;
+              object-fit: contain;
+            }
+            .fallback {
+              color: #64748b;
+              font-size: 13px;
+              text-align: center;
+            }
+            aside {
+              border: 1px solid #dbe3ef;
+              border-radius: 10px;
+              background: white;
+              padding: 16px;
+            }
+            .build-head {
+              display: flex;
+              justify-content: space-between;
+              gap: 12px;
+              padding-bottom: 12px;
+              border-bottom: 1px solid #e2e8f0;
+              font-size: 11px;
+              font-weight: 800;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+              color: #64748b;
+            }
+            .build-head strong {
+              color: #0f172a;
+            }
+            .shelf {
+              padding: 14px 0;
+              border-bottom: 1px solid #eef2f7;
+            }
+            .shelf:last-child {
+              border-bottom: 0;
+            }
+            .shelf-title {
+              margin-bottom: 8px;
+              color: #94a3b8;
+              font-size: 11px;
+              font-weight: 800;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+            }
+            .build-row, .additional-row {
+              display: flex;
+              justify-content: space-between;
+              gap: 12px;
+              margin-top: 7px;
+              font-size: 12px;
+              line-height: 1.25;
+            }
+            .build-row span, .additional-row span {
+              font-weight: 700;
+            }
+            .additional {
+              margin-top: 18px;
+              border: 1px solid #dbe3ef;
+              border-radius: 10px;
+              overflow: hidden;
+            }
+            .additional h3 {
+              margin: 0;
+              padding: 13px 16px;
+              border-bottom: 1px solid #e2e8f0;
+              color: #64748b;
+              font-size: 11px;
+              letter-spacing: 0.06em;
+              text-transform: uppercase;
+            }
+            .additional-row {
+              margin: 0;
+              padding: 12px 16px;
+              border-bottom: 1px solid #eef2f7;
+            }
+            .additional-row:last-child {
+              border-bottom: 0;
+            }
+            @media print {
+              body { background: white; }
+              .page { margin: 0; border: 0; border-radius: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <article class="page">
+            <header>
+              <div>
+                <div class="eyebrow">Merchandiser Visit Needed</div>
+                <h1>${escapeHtml(directive.name)}</h1>
+                <div class="store">${escapeHtml(store.storeName)} - ${escapeHtml(store.address)}</div>
+              </div>
+              <div class="meta">
+                <strong>Reason</strong>
+                <div>${escapeHtml(notExecutedReason || "Merchandiser visit needed")}</div>
+                <strong style="margin-top:12px;">Timing</strong>
+                <div>${escapeHtml(directive.timing)}</div>
+              </div>
+            </header>
+            <main>
+              <p class="details">${escapeHtml(directive.details)}</p>
+              <div class="content">
+                <div class="visual">
+                  ${imageUrl ? `<img class="recommendation-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(directive.name)} recommendation" />` : `<div class="fallback">Recommendation image unavailable. Use the build list for execution.</div>`}
+                </div>
+                <aside>
+                  <div class="build-head">
+                    <span>Build List</span>
+                    <strong>${escapeHtml(totalFacings)} facings</strong>
+                  </div>
+                  ${shelvesHtml}
+                </aside>
+              </div>
+              ${additionalItemsHtml}
+            </main>
+          </article>
+          <script>
+            const printReady = () => setTimeout(() => {
+              window.focus();
+              window.print();
+            }, 250);
+            const image = document.querySelector(".recommendation-image");
+            if (image && !image.complete) {
+              image.addEventListener("load", printReady, { once: true });
+              image.addEventListener("error", printReady, { once: true });
+            } else {
+              printReady();
+            }
+          </script>
+        </body>
+      </html>`);
+    pdfWindow.document.close();
   };
 
   return (
@@ -70,16 +328,17 @@ export default function MerchandiserExport({
         <div className="flex items-center gap-3">
           <button
             onClick={handleDownloadPdf}
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold py-2.5 px-5 rounded text-xs uppercase tracking-wider cursor-pointer flex items-center gap-2"
+            disabled={imageStatus === "loading"}
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-wait text-white font-semibold py-2.5 px-5 rounded text-xs uppercase tracking-wider cursor-pointer flex items-center gap-2"
           >
             <Download className="h-4 w-4" />
-            Download PDF
+            {imageStatus === "loading" ? "Loading Image" : "Download PDF"}
           </button>
           <button
             onClick={onContinue}
             className="border border-slate-200 hover:bg-slate-50 text-slate-800 font-semibold py-2.5 px-5 rounded text-xs uppercase tracking-wider cursor-pointer"
           >
-            Continue to Summary
+            Return to Activities
           </button>
         </div>
       </div>
@@ -107,11 +366,13 @@ export default function MerchandiserExport({
 
           <div className="mt-5 grid grid-cols-[minmax(0,1fr)_260px] gap-4 items-start">
             <div className="rounded-lg border border-slate-200 min-h-[390px] flex items-center justify-center p-4 bg-white">
-              {directive.planogramImage ? (
+              {recommendationVisual && imageStatus !== "error" ? (
                 <img
-                  src={directive.planogramImage}
+                  src={recommendationVisual}
                   alt={`${directive.name} recommendation`}
                   className="w-full max-w-[560px] max-h-[360px] object-contain"
+                  onLoad={() => setImageStatus("ready")}
+                  onError={() => setImageStatus("error")}
                 />
               ) : (
                 <div className="text-center text-slate-500 text-sm">

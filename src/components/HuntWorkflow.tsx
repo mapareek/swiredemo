@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from "react";
 import { FlowLiftMetrics, FlowType, Screen, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
-import { ArrowLeft, ArrowRight, Filter } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Filter } from "lucide-react";
 
 interface HuntWorkflowProps {
   store: StoreInfo;
+  huntOutcomes?: Record<string, string>;
   onBackToHub: () => void;
-  onSelectAction: (nextScreen: Screen, flowType: FlowType, metrics?: FlowLiftMetrics) => void;
+  onSelectAction: (nextScreen: Screen, flowType: FlowType, metrics?: FlowLiftMetrics, opportunityId?: string) => void;
 }
 
 type CandidateWithBox = PicOSOptimizationCandidate & {
@@ -30,6 +31,20 @@ function signedPercent(value: number) {
 function PositiveLift({ value, suffix = "" }: { value: number; suffix?: string }) {
   if (value <= 0) return null;
   return <>{signedPercent(value)}{suffix}</>;
+}
+
+function formatOutcomeTimestamp(value: string) {
+  const recordedAt = new Date(value);
+  if (Number.isNaN(recordedAt.getTime())) return "";
+
+  const now = new Date();
+  const isToday = recordedAt.toDateString() === now.toDateString();
+  const dateLabel = isToday
+    ? "today"
+    : recordedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const timeLabel = recordedAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+  return `${dateLabel}, ${timeLabel}`;
 }
 
 function normalize(value: string) {
@@ -109,7 +124,7 @@ function getHuntOpportunities(store: StoreInfo): HuntOpportunity[] {
     );
 }
 
-export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: HuntWorkflowProps) {
+export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, onSelectAction }: HuntWorkflowProps) {
   const [locationFilter, setLocationFilter] = useState("All");
   const [displayTypeFilter, setDisplayTypeFilter] = useState("All");
   const [showCovered, setShowCovered] = useState(true);
@@ -242,9 +257,14 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
             </section>
           ) : (
             <div className="space-y-3">
-              {filteredOpportunities.map((opportunity, index) => (
-                <section key={opportunity.id} className="bg-white border border-slate-200 rounded shadow-xs overflow-hidden">
-                  <div className="p-4">
+              {filteredOpportunities.map((opportunity, index) => {
+                const confirmedAt = huntOutcomes[opportunity.id];
+                const isConfirmed = Boolean(confirmedAt);
+                return (
+                <section key={opportunity.id} className={`border rounded shadow-xs overflow-hidden transition-colors ${
+                  isConfirmed ? "bg-slate-50 border-slate-200" : "bg-white border-slate-200"
+                }`}>
+                  <div className={`p-4 ${isConfirmed ? "opacity-75" : ""}`}>
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_190px] gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -271,7 +291,7 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                       {opportunity.products.map(product => (
-                        <div key={`${product.id}-${product.sku}-${product.packSize}`} className="bg-white border border-slate-200 rounded p-3 min-w-0">
+                        <div key={`${product.id}-${product.sku}-${product.packSize}`} className={`${isConfirmed ? "bg-slate-50" : "bg-white"} border border-slate-200 rounded p-3 min-w-0`}>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
                               <img src={IMAGES.skuReference} alt="" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
@@ -293,18 +313,32 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
 
                     <div className="mt-4 flex justify-end">
                       <button
+                        disabled={isConfirmed}
                         onClick={() => onSelectAction(Screen.BEFORE_PHOTO, "HUNT_SPACE", {
                           liftPct: opportunity.bestLiftPct,
                           opportunityUnits: opportunity.totalUnits
-                        })}
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-2"
+                        }, opportunity.id)}
+                        className={`font-bold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono flex items-center gap-2 ${
+                          isConfirmed
+                            ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                            : "bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                        }`}
                       >
-                        Confirm Display <ArrowRight className="h-4 w-4" />
+                        {isConfirmed ? "Confirmed" : "Confirm Display"} <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
+                  {isConfirmed && (
+                    <div className="px-4 py-3 border-t border-emerald-100 bg-emerald-50 text-emerald-700 text-xs font-bold flex items-center gap-2">
+                      <Check className="h-4 w-4 shrink-0" />
+                      <span>Confirmed</span>
+                      <span className="text-emerald-500">-</span>
+                      <span className="font-medium">{formatOutcomeTimestamp(confirmedAt)}</span>
+                    </div>
+                  )}
                 </section>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>

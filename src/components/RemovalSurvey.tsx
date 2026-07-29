@@ -38,6 +38,12 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
     });
   };
 
+  const submitLabel = executed === true
+    ? "Continue to Camera"
+    : reason === "Merchandiser visit needed"
+      ? "Continue to Handoff"
+      : "Return to Activities";
+
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC]">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-xs shrink-0">
@@ -71,7 +77,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
           <span className="text-slate-300">-&gt;</span>
           <span>3. After Photo</span>
           <span className="text-slate-300">-&gt;</span>
-          <span>4. Summary</span>
+          <span>4. Saved</span>
         </div>
       </header>
 
@@ -177,7 +183,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
               : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
           }`}
         >
-          {executed === true ? "Continue to Camera" : "Continue to Summary"} <ArrowRight className="h-4 w-4" />
+          {submitLabel} <ArrowRight className="h-4 w-4" />
         </button>
       </footer>
     </div>

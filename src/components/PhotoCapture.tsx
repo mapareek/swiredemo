@@ -166,7 +166,7 @@ export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCa
               onClick={onConfirmPhoto}
               className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 px-6 rounded text-xs uppercase tracking-wider font-mono cursor-pointer transition-colors flex items-center justify-center gap-2"
             >
-              {flowType === "EXECUTE_PICOS" ? "Continue to Summary" : "Confirm & Proceed"} <Check className="h-4 w-4" />
+              {flowType === "EXECUTE_PICOS" || flowType === "HUNT_SPACE" ? "Save Outcome" : "Confirm & Proceed"} <Check className="h-4 w-4" />
             </button>
             <button
               id="retake-photo"

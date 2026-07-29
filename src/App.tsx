@@ -25,16 +25,20 @@ export default function App() {
   const [executionCheck, setExecutionCheck] = useState<ExecutionCheckResult | null>(null);
   const [activityOutcomes, setActivityOutcomes] = useState<Record<string, ActivityOutcome>>({});
   const [lastActivityOutcomeId, setLastActivityOutcomeId] = useState<string | null>(null);
+  const [huntOutcomes, setHuntOutcomes] = useState<Record<string, string>>({});
+  const [pendingHuntOpportunityId, setPendingHuntOpportunityId] = useState<string | null>(null);
   
   // Toast Alert Notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastTone, setToastTone] = useState<"default" | "success">("default");
 
   // Close visit simulation state
   const [isVisitClosed, setIsVisitClosed] = useState(false);
 
   // Show a toast message
-  const triggerToast = (msg: string) => {
+  const triggerToast = (msg: string, tone: "default" | "success" = "default") => {
     setToastMessage(msg);
+    setToastTone(tone);
     setTimeout(() => {
       setToastMessage(null);
     }, 4500);
@@ -49,6 +53,8 @@ export default function App() {
     setExecutionCheck(null);
     setActivityOutcomes({});
     setLastActivityOutcomeId(null);
+    setHuntOutcomes({});
+    setPendingHuntOpportunityId(null);
     setCurrentScreen(Screen.ACTION_HUB);
     triggerToast(`Visit started at ${store.storeName}`);
   };
@@ -66,9 +72,10 @@ export default function App() {
   };
 
   // Hunt actions to proceed directly into photo captures
-  const handleHuntSelectAction = (nextScreen: Screen, selectedFlow: FlowType, metrics?: FlowLiftMetrics) => {
+  const handleHuntSelectAction = (nextScreen: Screen, selectedFlow: FlowType, metrics?: FlowLiftMetrics, opportunityId?: string) => {
     setFlowType(selectedFlow);
     setFlowLiftMetrics(metrics || null);
+    setPendingHuntOpportunityId(selectedFlow === "HUNT_SPACE" ? opportunityId || null : null);
     setCurrentScreen(selectedFlow === "EXECUTE_PICOS" ? Screen.EXECUTE_PICOS : selectedFlow === "HUNT_SPACE" ? Screen.AFTER_PHOTO : nextScreen);
     triggerToast(`Initiating ${selectedFlow === "HUNT_SPACE" ? "Hunt Space Capture" : selectedFlow === "EXECUTE_PICOS" ? "PicOS Execution" : "SKU Optimization"}`);
   };
@@ -100,12 +107,24 @@ export default function App() {
   // After photo captured
   const handleConfirmAfterPhoto = () => {
     if (flowType === "EXECUTE_PICOS") {
-      setCurrentScreen(Screen.SUMMARY);
-      triggerToast("After Photo stamped & saved. Preparing PicOS summary.");
-    } else {
-      setCurrentScreen(Screen.SUMMARY);
-      triggerToast("After Photo stamped & saved. Recalculating compliance.");
+      setCurrentScreen(Screen.EXECUTE_PICOS);
+      triggerToast("Outcome saved.", "success");
+      return;
     }
+    if (flowType === "HUNT_SPACE") {
+      if (pendingHuntOpportunityId) {
+        setHuntOutcomes(prev => ({
+          ...prev,
+          [pendingHuntOpportunityId]: new Date().toISOString()
+        }));
+      }
+      setPendingHuntOpportunityId(null);
+      setCurrentScreen(Screen.HUNT_WORKFLOW);
+      triggerToast("Outcome saved.", "success");
+      return;
+    }
+    setCurrentScreen(Screen.SUMMARY);
+    triggerToast("After Photo stamped & saved. Recalculating compliance.");
   };
 
   const handleSubmitExecutionCheck = (result: ExecutionCheckResult) => {
@@ -132,8 +151,8 @@ export default function App() {
       triggerToast("Execution status saved. Preparing merchandiser PDF handoff.");
       return;
     }
-    setCurrentScreen(Screen.SUMMARY);
-    triggerToast("Execution status saved. Preparing PicOS summary.");
+    setCurrentScreen(Screen.EXECUTE_PICOS);
+    triggerToast("Outcome saved.", "success");
   };
 
   const handleUndoActivityOutcome = (directiveId: string) => {
@@ -176,6 +195,8 @@ export default function App() {
     setExecutionCheck(null);
     setActivityOutcomes({});
     setLastActivityOutcomeId(null);
+    setHuntOutcomes({});
+    setPendingHuntOpportunityId(null);
   };
 
   return (
@@ -201,6 +222,7 @@ export default function App() {
       {currentScreen === Screen.HUNT_WORKFLOW && (
         <HuntWorkflow
           store={selectedStore}
+          huntOutcomes={huntOutcomes}
           onBackToHub={handleBackToHub}
           onSelectAction={handleHuntSelectAction}
         />
@@ -258,7 +280,10 @@ export default function App() {
           picosConstraints={picosConstraints}
           executionCheck={executionCheck}
           onBack={() => setCurrentScreen(Screen.REMOVAL_SURVEY)}
-          onContinue={() => setCurrentScreen(Screen.SUMMARY)}
+          onContinue={() => {
+            setCurrentScreen(Screen.EXECUTE_PICOS);
+            triggerToast("Outcome saved.", "success");
+          }}
         />
       )}
 
@@ -277,12 +302,20 @@ export default function App() {
 
       {/* TOAST SYSTEM */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-6 bg-slate-900 text-white text-xs font-semibold px-4.5 py-3 rounded-md shadow-xl border border-slate-800 flex items-center gap-3 animate-slide-up z-50 max-w-md">
-          <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center shrink-0">
+        <div className={`fixed bottom-6 left-6 text-xs font-semibold px-4.5 py-3 rounded-md shadow-xl flex items-center gap-3 animate-slide-up z-50 max-w-md ${
+          toastTone === "success"
+            ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+            : "bg-slate-900 text-white border border-slate-800"
+        }`}>
+          <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+            toastTone === "success" ? "bg-emerald-600" : "bg-red-600"
+          }`}>
             <Check className="h-3.5 w-3.5 text-white" />
           </div>
           <span className="leading-normal">{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white ml-2">
+          <button onClick={() => setToastMessage(null)} className={`ml-2 ${
+            toastTone === "success" ? "text-emerald-700 hover:text-emerald-950" : "text-slate-400 hover:text-white"
+          }`}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
