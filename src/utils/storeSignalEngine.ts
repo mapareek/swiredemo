@@ -202,7 +202,7 @@ export function getStoreSignalHuntRecommendation(store: StoreInfo, constraints: 
     })),
     totalCost: parseFloat(totalUnits.toFixed(1)),
     expectedLift,
-    explanation: `Net-new ${best.displayType} opportunity ranked from ${store.storeName} model signals. Best location: ${best.locationGuidance || best.location}; source activity: ${best.box.box}. Ranking uses lift, unit opportunity, target-location fit, display type, channel fit, and whether the location is already covered by backend picOS.`,
+    explanation: `Net-new ${best.displayType} opportunity ranked from ${store.storeName} model signals. Best location: ${best.locationGuidance || best.location}; source activity: ${best.box.box}. Default ranking uses unit opportunity first, then lift, target-location fit, display type, channel fit, and whether the location is already covered by backend picOS.`,
     feasible: true
   };
 }
@@ -221,8 +221,8 @@ export function getStoreSignalOptimizeRecommendation(
     .filter(candidate => candidate.liftPct > 0)
     .map(candidate => ({ candidate }))
     .sort((a, b) =>
-      b.candidate.liftPct - a.candidate.liftPct ||
       b.candidate.opportunityUnits - a.candidate.opportunityUnits ||
+      b.candidate.liftPct - a.candidate.liftPct ||
       b.candidate.facings - a.candidate.facings
     );
 
@@ -272,6 +272,6 @@ export function getStoreSignalOptimizeRecommendation(
     liftPercent: averageLift,
     displayType,
     currentProducts,
-    explanation: `Recommended products for a ${displayType}${constraints.location ? ` at ${constraints.location}` : ""} using ${store.storeName} recommendation candidates. Optional current display inputs (${currentProducts.join(", ") || "none selected"}) are used to mark keep/increase/add actions. Ranked by location match, display type, lift %, and unit opportunity. Expected incremental opportunity: +${totalUnits.toFixed(1)} units.`
+    explanation: `Recommended products for a ${displayType}${constraints.location ? ` at ${constraints.location}` : ""} using ${store.storeName} recommendation candidates. Optional current display inputs (${currentProducts.join(", ") || "none selected"}) are used to mark keep/increase/add actions. Ranked by location match, display type, unit opportunity, and lift %. Expected incremental opportunity: +${totalUnits.toFixed(1)} units.`
   };
 }

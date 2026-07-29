@@ -108,6 +108,11 @@ export interface ExecutionCheckResult {
   otherReason?: string;
 }
 
+export interface ActivityOutcome extends ExecutionCheckResult {
+  directiveId: string;
+  recordedAt: string;
+}
+
 export interface OnAdDirective {
   id: string;
   code: string;

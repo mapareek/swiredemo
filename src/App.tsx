@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ExecutionCheckResult, FlowLiftMetrics, FlowType, Screen, PicOSConstraints, OptimizeConstraints, StoreInfo } from "./types";
+import { ActivityOutcome, ExecutionCheckResult, FlowLiftMetrics, FlowType, Screen, PicOSConstraints, OptimizeConstraints, StoreInfo } from "./types";
 import { DEFAULT_STORE } from "./data/picosStores";
 import StoreSelector from "./components/StoreSelector";
 import StoreActionHub from "./components/StoreActionHub";
@@ -23,6 +23,8 @@ export default function App() {
   const [optimizeConstraints, setOptimizeConstraints] = useState<OptimizeConstraints | null>(null);
   const [flowLiftMetrics, setFlowLiftMetrics] = useState<FlowLiftMetrics | null>(null);
   const [executionCheck, setExecutionCheck] = useState<ExecutionCheckResult | null>(null);
+  const [activityOutcomes, setActivityOutcomes] = useState<Record<string, ActivityOutcome>>({});
+  const [lastActivityOutcomeId, setLastActivityOutcomeId] = useState<string | null>(null);
   
   // Toast Alert Notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -45,6 +47,8 @@ export default function App() {
     setOptimizeConstraints(null);
     setFlowLiftMetrics(null);
     setExecutionCheck(null);
+    setActivityOutcomes({});
+    setLastActivityOutcomeId(null);
     setCurrentScreen(Screen.ACTION_HUB);
     triggerToast(`Visit started at ${store.storeName}`);
   };
@@ -78,12 +82,13 @@ export default function App() {
   };
 
   // PicOS configuration complete
-  const handleProceedToPicosAfterPhoto = (constraints: PicOSConstraints) => {
+  const handleProceedToPicosOutcome = (constraints: PicOSConstraints) => {
     setFlowType("EXECUTE_PICOS");
     setPicosConstraints(constraints);
     setFlowLiftMetrics(null);
     setExecutionCheck(null);
-    setCurrentScreen(Screen.AFTER_PHOTO);
+    setCurrentScreen(Screen.REMOVAL_SURVEY);
+    triggerToast("Activity recorded. Confirm execution outcome.");
   };
 
   // Before photo captured
@@ -95,8 +100,8 @@ export default function App() {
   // After photo captured
   const handleConfirmAfterPhoto = () => {
     if (flowType === "EXECUTE_PICOS") {
-      setCurrentScreen(Screen.REMOVAL_SURVEY);
-      triggerToast("After Photo stamped & saved. Confirm execution status.");
+      setCurrentScreen(Screen.SUMMARY);
+      triggerToast("After Photo stamped & saved. Preparing PicOS summary.");
     } else {
       setCurrentScreen(Screen.SUMMARY);
       triggerToast("After Photo stamped & saved. Recalculating compliance.");
@@ -105,6 +110,23 @@ export default function App() {
 
   const handleSubmitExecutionCheck = (result: ExecutionCheckResult) => {
     setExecutionCheck(result);
+    if (picosConstraints?.directiveId) {
+      const outcome: ActivityOutcome = {
+        ...result,
+        directiveId: picosConstraints.directiveId,
+        recordedAt: new Date().toISOString()
+      };
+      setActivityOutcomes(prev => ({
+        ...prev,
+        [outcome.directiveId]: outcome
+      }));
+      setLastActivityOutcomeId(outcome.directiveId);
+    }
+    if (result.executed === true) {
+      setCurrentScreen(Screen.AFTER_PHOTO);
+      triggerToast("Execution confirmed. Capture the completed activity.");
+      return;
+    }
     if (result.executed === false && result.reason === "Merchandiser visit needed") {
       setCurrentScreen(Screen.MERCHANDISER_EXPORT);
       triggerToast("Execution status saved. Preparing merchandiser PDF handoff.");
@@ -114,9 +136,29 @@ export default function App() {
     triggerToast("Execution status saved. Preparing PicOS summary.");
   };
 
-  // Finish workflow and return to hub
+  const handleUndoActivityOutcome = (directiveId: string) => {
+    const outcome = activityOutcomes[directiveId];
+    setActivityOutcomes(prev => {
+      const next = { ...prev };
+      delete next[directiveId];
+      return next;
+    });
+    setLastActivityOutcomeId(prev => (prev === directiveId ? null : prev));
+    if (picosConstraints?.directiveId === directiveId) {
+      setExecutionCheck(null);
+    }
+    triggerToast(outcome ? "Activity outcome undone." : "Activity outcome cleared.");
+  };
+
+  // Finish workflow and return to the originating list/workflow
   const handleFinishWorkflow = () => {
-    setCurrentScreen(Screen.ACTION_HUB);
+    if (flowType === "EXECUTE_PICOS") {
+      setCurrentScreen(Screen.EXECUTE_PICOS);
+    } else if (flowType === "HUNT_SPACE") {
+      setCurrentScreen(Screen.HUNT_WORKFLOW);
+    } else {
+      setCurrentScreen(Screen.ACTION_HUB);
+    }
     triggerToast(`${flowType === "HUNT_SPACE" ? "Hunt Space" : flowType === "EXECUTE_PICOS" ? "PicOS Execution" : "SKU Optimization"} successfully synced.`);
   };
 
@@ -132,6 +174,8 @@ export default function App() {
     setOptimizeConstraints(null);
     setFlowLiftMetrics(null);
     setExecutionCheck(null);
+    setActivityOutcomes({});
+    setLastActivityOutcomeId(null);
   };
 
   return (
@@ -165,8 +209,11 @@ export default function App() {
       {currentScreen === Screen.EXECUTE_PICOS && (
         <ExecutePicOS
           store={selectedStore}
+          activityOutcomes={activityOutcomes}
+          lastActivityOutcomeId={lastActivityOutcomeId}
           onBackToHub={handleBackToHub}
-          onProceedToAfterPhoto={handleProceedToPicosAfterPhoto}
+          onUndoActivityOutcome={handleUndoActivityOutcome}
+          onProceedToAfterPhoto={handleProceedToPicosOutcome}
         />
       )}
 
@@ -194,13 +241,13 @@ export default function App() {
           photoType="AFTER"
           flowType={flowType}
           onConfirmPhoto={handleConfirmAfterPhoto}
-          onCancel={() => setCurrentScreen(flowType === "EXECUTE_PICOS" ? Screen.EXECUTE_PICOS : flowType === "HUNT_SPACE" ? Screen.HUNT_WORKFLOW : Screen.OPTIMIZE_DISPLAY)}
+          onCancel={() => setCurrentScreen(flowType === "EXECUTE_PICOS" ? Screen.REMOVAL_SURVEY : flowType === "HUNT_SPACE" ? Screen.HUNT_WORKFLOW : Screen.OPTIMIZE_DISPLAY)}
         />
       )}
 
       {currentScreen === Screen.REMOVAL_SURVEY && (
         <RemovalSurvey
-          onBackToPhoto={() => setCurrentScreen(Screen.AFTER_PHOTO)}
+          onBackToPhoto={() => setCurrentScreen(Screen.EXECUTE_PICOS)}
           onSubmit={handleSubmitExecutionCheck}
         />
       )}

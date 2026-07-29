@@ -81,6 +81,11 @@ export default function Summary({
     : flowType === "HUNT_SPACE"
       ? "Hunt Space Opportunity"
       : "SKU Optimization Standard";
+  const finishLabel = flowType === "EXECUTE_PICOS"
+    ? "Complete & Return to Activities"
+    : flowType === "HUNT_SPACE"
+      ? "Complete & Return to Hunts"
+      : "Complete & Return to Action Hub";
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC]">
@@ -111,9 +116,9 @@ export default function Summary({
           <div className="hidden lg:flex items-center gap-1.5 font-mono text-[11px] font-bold text-slate-400">
             <span>1. Setup</span>
             <span className="text-slate-300">-&gt;</span>
-            <span>2. After Photo</span>
+            <span>2. Execution Check</span>
             <span className="text-slate-300">-&gt;</span>
-            <span>3. Execution Check</span>
+            <span>3. After Photo</span>
             <span className="text-slate-300">-&gt;</span>
             <span className="text-red-600 uppercase border-b border-red-600 pb-0.5">4. Finish</span>
           </div>
@@ -188,7 +193,7 @@ export default function Summary({
               onClick={onFinish}
               className="w-full sm:w-auto bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 px-8 rounded text-xs uppercase tracking-wider font-mono cursor-pointer transition-colors shadow-xs"
             >
-              Complete & Return to Action Hub
+              {finishLabel}
             </button>
           </div>
         </div>

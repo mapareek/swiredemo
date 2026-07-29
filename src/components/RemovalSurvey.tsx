@@ -52,7 +52,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] bg-red-100 text-red-800 font-semibold px-1.5 py-0.5 rounded uppercase">
-                Step 3 of 4
+                Step 2 of 4
               </span>
               <h1 className="font-bold text-slate-900 text-base leading-none">
                 Execution Check
@@ -67,11 +67,11 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
         <div className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-slate-400">
           <span>1. Setup</span>
           <span className="text-slate-300">-&gt;</span>
-          <span>2. After Photo</span>
+          <span className="text-red-600 uppercase border-b border-red-600 pb-0.5">2. Execution Check</span>
           <span className="text-slate-300">-&gt;</span>
-          <span className="text-red-600 uppercase border-b border-red-600 pb-0.5">3. Execution Check</span>
+          <span>3. After Photo</span>
           <span className="text-slate-300">-&gt;</span>
-          <span>4. Finish</span>
+          <span>4. Summary</span>
         </div>
       </header>
 
@@ -119,7 +119,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
               <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-bold text-emerald-900">Great, execution confirmed.</h3>
-                <p className="text-sm text-emerald-800 mt-1">Continue to summary to sync the completed activity.</p>
+                <p className="text-sm text-emerald-800 mt-1">Continue to capture the completed activity photo.</p>
               </div>
             </section>
           )}
@@ -177,7 +177,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
               : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
           }`}
         >
-          Continue to Summary <ArrowRight className="h-4 w-4" />
+          {executed === true ? "Continue to Camera" : "Continue to Summary"} <ArrowRight className="h-4 w-4" />
         </button>
       </footer>
     </div>

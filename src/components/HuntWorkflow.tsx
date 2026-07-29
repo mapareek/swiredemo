@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { FlowLiftMetrics, FlowType, Screen, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
-import { ArrowLeft, ArrowRight, EyeOff, Filter, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Filter } from "lucide-react";
 
 interface HuntWorkflowProps {
   store: StoreInfo;
@@ -81,8 +81,8 @@ function getHuntOpportunities(store: StoreInfo): HuntOpportunity[] {
       const [displayType, location] = key.split("|");
       const products = dedupeProducts(
         [...candidates].sort((a, b) =>
-          b.liftPct - a.liftPct ||
           b.opportunityUnits - a.opportunityUnits ||
+          b.liftPct - a.liftPct ||
           b.facings - a.facings
         )
       ).slice(0, 4);
@@ -104,18 +104,22 @@ function getHuntOpportunities(store: StoreInfo): HuntOpportunity[] {
     .filter(opportunity => opportunity.products.length > 0)
     .sort((a, b) =>
       Number(a.coveredByPicos) - Number(b.coveredByPicos) ||
-      b.bestLiftPct - a.bestLiftPct ||
-      b.totalUnits - a.totalUnits
+      b.totalUnits - a.totalUnits ||
+      b.bestLiftPct - a.bestLiftPct
     );
 }
 
 export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: HuntWorkflowProps) {
   const [locationFilter, setLocationFilter] = useState("All");
   const [displayTypeFilter, setDisplayTypeFilter] = useState("All");
-  const [hideCovered, setHideCovered] = useState(true);
-  const [sortBy, setSortBy] = useState<"lift" | "units">("lift");
+  const [showCovered, setShowCovered] = useState(true);
+  const [sortBy, setSortBy] = useState<"lift" | "units">("units");
 
   const opportunities = useMemo(() => getHuntOpportunities(store), [store]);
+  const coveredCount = useMemo(
+    () => opportunities.filter(opportunity => opportunity.coveredByPicos).length,
+    [opportunities]
+  );
 
   const locations = useMemo(
     () => ["All", ...Array.from(new Set(opportunities.map(opportunity => opportunity.location))).sort()],
@@ -131,14 +135,14 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
     return opportunities
       .filter(opportunity => locationFilter === "All" || opportunity.location === locationFilter)
       .filter(opportunity => displayTypeFilter === "All" || opportunity.displayType === displayTypeFilter)
-      .filter(opportunity => !hideCovered || !opportunity.coveredByPicos)
+      .filter(opportunity => showCovered || !opportunity.coveredByPicos)
       .sort((a, b) => {
         if (sortBy === "units") {
           return b.totalUnits - a.totalUnits || b.bestLiftPct - a.bestLiftPct;
         }
         return b.bestLiftPct - a.bestLiftPct || b.totalUnits - a.totalUnits;
       });
-  }, [displayTypeFilter, hideCovered, locationFilter, opportunities, sortBy]);
+  }, [displayTypeFilter, locationFilter, opportunities, showCovered, sortBy]);
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC]">
@@ -152,16 +156,11 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
           </button>
           <div className="h-6 w-[1px] bg-slate-200 shrink-0"></div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-red-100 text-red-800 font-bold px-1.5 py-0.5 rounded font-mono uppercase">
-                Workflow 1
-              </span>
-              <h1 className="font-sans font-bold text-slate-900 tracking-tight text-base leading-none truncate">
-                Hunt Space Guidance
-              </h1>
-            </div>
+            <h1 className="font-sans font-bold text-slate-900 tracking-tight text-base leading-none truncate">
+              Get Guidance for Hunts
+            </h1>
             <p className="text-xs text-slate-500 mt-1 truncate">
-              {store.storeName} - Ranked net-new display opportunities
+              {store.storeName} - Ranked spots for net-new displays
             </p>
           </div>
         </div>
@@ -175,7 +174,7 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
               <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Filters</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_180px_180px] gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_180px_190px] gap-3">
               <label className="space-y-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Location</span>
                 <select
@@ -209,36 +208,31 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
                   onChange={event => setSortBy(event.target.value as "lift" | "units")}
                   className="w-full h-11 rounded border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
                 >
+                  <option value="units">Most units</option>
                   <option value="lift">Highest lift</option>
-                  <option value="units">Highest units</option>
                 </select>
               </label>
 
-              <button
-                onClick={() => setHideCovered(prev => !prev)}
-                className={`h-11 self-end rounded border px-3 text-xs font-bold uppercase tracking-wider font-mono cursor-pointer flex items-center justify-center gap-2 ${
-                  hideCovered
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <EyeOff className="h-4 w-4" />
-                Hide Covered
-              </button>
+              <label className="h-11 self-end rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 cursor-pointer flex items-center justify-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showCovered}
+                  onChange={event => setShowCovered(event.target.checked)}
+                  className="h-4 w-4 accent-slate-900"
+                />
+                Show covered spots ({coveredCount})
+              </label>
             </div>
           </section>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
-              Ranked Hunt Opportunities
+              Opportunities for this store, ranked by {sortBy === "units" ? "unit opportunity" : "lift"}
+              <span className="ml-4 text-slate-400">{filteredOpportunities.length} of {opportunities.length}</span>
             </h2>
-            <span className="text-xs text-slate-500 font-mono">
-              {filteredOpportunities.length} shown / {opportunities.length} total
+            <span className="text-xs text-slate-500">
+              Estimated July sales lift vs. no display
             </span>
-          </div>
-
-          <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 font-bold">
-            Lift estimates compare the recommended execution against a no-activation baseline for this store and July projection period.
           </div>
 
           {filteredOpportunities.length === 0 ? (
@@ -250,52 +244,32 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
             <div className="space-y-3">
               {filteredOpportunities.map((opportunity, index) => (
                 <section key={opportunity.id} className="bg-white border border-slate-200 rounded shadow-xs overflow-hidden">
-                  <div className="p-4 grid grid-cols-1 lg:grid-cols-[1fr_170px_170px] gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="bg-red-600 text-white rounded px-2 py-1 text-[11px] font-bold font-mono">
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_190px] gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="bg-slate-100 text-slate-600 rounded px-2 py-1 text-[11px] font-bold font-mono">
                           #{index + 1}
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider font-mono text-slate-500">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {opportunity.location}
-                        </span>
-                        <span className="bg-slate-100 text-slate-700 rounded px-2 py-1 text-[10px] font-bold uppercase font-mono">
-                          {opportunity.displayType}
-                        </span>
-                        {opportunity.coveredByPicos && (
-                          <span className="bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-1 text-[10px] font-bold uppercase font-mono">
-                            PicOS-covered
                           </span>
-                        )}
+                          <h3 className="text-lg font-black text-slate-950 leading-tight">
+                            {opportunity.displayType} at {opportunity.location}
+                          </h3>
+                          {opportunity.coveredByPicos && (
+                            <span className="bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-1 text-[10px] font-bold uppercase font-mono">
+                              Covered by existing activity
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <h3 className="text-lg font-black text-slate-950 mt-3">
-                        {opportunity.displayType} at {opportunity.location}
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Products are stack ranked by lift within this location and display type.
-                      </p>
-                    </div>
 
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Best Lift</span>
-                      <div className="text-2xl font-black text-red-600 font-mono">
-                        <PositiveLift value={opportunity.bestLiftPct} />
+                      <div className="lg:text-right">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Top unit opportunity</span>
+                        <div className="text-2xl font-black text-emerald-700 font-mono leading-tight">+{Math.round(opportunity.products[0]?.opportunityUnits || 0)} units</div>
+                        <p className="text-[10px] text-slate-500 font-semibold truncate">{opportunity.products[0]?.sku}</p>
                       </div>
-                      {opportunity.averageLiftPct > 0 && (
-                        <p className="text-[10px] text-slate-500 font-mono">Avg {signedPercent(opportunity.averageLiftPct)}</p>
-                      )}
                     </div>
 
-                    <div className="lg:text-right">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Unit Opportunity</span>
-                      <div className="text-2xl font-black text-slate-950 font-mono">+{opportunity.totalUnits.toFixed(1)}</div>
-                      <p className="text-[10px] text-slate-500 font-mono">units</p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100 bg-slate-50/60 p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                       {opportunity.products.map(product => (
                         <div key={`${product.id}-${product.sku}-${product.packSize}`} className="bg-white border border-slate-200 rounded p-3 min-w-0">
                           <div className="flex items-center gap-3">
@@ -308,10 +282,10 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
                             </div>
                           </div>
                           <div className="mt-3 flex items-center justify-between text-[10px] font-mono">
-                            <span className="text-red-600 font-bold">
+                            <span className="text-emerald-700 font-bold">
                               <PositiveLift value={Math.round(product.liftPct)} suffix=" lift" />
                             </span>
-                            <span className="text-slate-500">+{product.opportunityUnits.toFixed(1)} units</span>
+                            <span className="text-slate-700 font-bold">+{Math.round(product.opportunityUnits)} units</span>
                           </div>
                         </div>
                       ))}
@@ -325,7 +299,7 @@ export default function HuntWorkflow({ store, onBackToHub, onSelectAction }: Hun
                         })}
                         className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-2"
                       >
-                        Capture Execution <ArrowRight className="h-4 w-4" />
+                        Confirm Display <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
                   </div>

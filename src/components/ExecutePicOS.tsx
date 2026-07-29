@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Database, Layers, Lock, MapPin, Minus, PackageCheck, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CircleMinus, Database, Layers, Lock, MapPin, Minus, PackageCheck, Plus, RefreshCw, Undo2 } from "lucide-react";
 import {
+  ActivityOutcome,
   ON_AD_DIRECTIVES,
   PicOSConstraints,
   PicOSActivityBox,
@@ -15,7 +16,10 @@ import {
 
 interface ExecutePicOSProps {
   store: StoreInfo;
+  activityOutcomes?: Record<string, ActivityOutcome>;
+  lastActivityOutcomeId?: string | null;
   onBackToHub: () => void;
+  onUndoActivityOutcome?: (directiveId: string) => void;
   onProceedToAfterPhoto: (constraints: PicOSConstraints) => void;
 }
 
@@ -383,11 +387,15 @@ function initialCandidateIndexForSource(
   const constraints = extractAllowedLocations(source);
   const bestIndex = (predicate: (candidate: PicOSOptimizationCandidate) => boolean) => {
     let selectedIndex = -1;
+    let selectedUnits = -Infinity;
     let selectedLift = -Infinity;
     candidates.forEach((candidate, index) => {
       if (!predicate(candidate)) return;
-      if (candidate.liftPct > selectedLift) {
+      if (candidate.opportunityUnits > selectedUnits || (
+        candidate.opportunityUnits === selectedUnits && candidate.liftPct > selectedLift
+      )) {
         selectedIndex = index;
+        selectedUnits = candidate.opportunityUnits;
         selectedLift = candidate.liftPct;
       }
     });
@@ -427,7 +435,7 @@ function bestLiftPct(candidates = [] as PicOSOptimizationCandidate[]) {
 function aggregateLiftPctForCandidates(candidates = [] as PicOSOptimizationCandidate[]) {
   const seen = new Set<string>();
   const selected = [...candidates]
-    .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)
+    .sort((a, b) => b.opportunityUnits - a.opportunityUnits || b.liftPct - a.liftPct)
     .filter(candidate => {
       const key = skuIdentity(candidate.sku);
       if (seen.has(key)) return false;
@@ -443,7 +451,7 @@ function aggregateLiftPctForCandidates(candidates = [] as PicOSOptimizationCandi
 function aggregateMetricsForCandidates(candidates = [] as PicOSOptimizationCandidate[]) {
   const seen = new Set<string>();
   const selected = [...candidates]
-    .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)
+    .sort((a, b) => b.opportunityUnits - a.opportunityUnits || b.liftPct - a.liftPct)
     .filter(candidate => {
       const key = skuIdentity(candidate.sku);
       if (seen.has(key)) return false;
@@ -458,6 +466,20 @@ function aggregateMetricsForCandidates(candidates = [] as PicOSOptimizationCandi
     opportunityUnits: parseFloat(opportunityUnits.toFixed(1)),
     liftPct: baselineUnits > 0 ? Math.round((opportunityUnits / baselineUnits) * 100) : bestLiftPct(selected)
   };
+}
+
+function bestOpportunityUnitsForSource(
+  source: Pick<OnAdDirective, "location" | "details" | "name"> | PicOSActivityBox,
+  candidates = [] as PicOSOptimizationCandidate[],
+  skuConstraints = [] as BackendSkuConstraint[]
+) {
+  const constraints = extractAllowedLocations(source);
+  const eligibleCandidates = constraints.length
+    ? candidates.filter(candidate => candidateMatchesBackendSku(candidate, skuConstraints) && candidateMatchesLocationConstraint(candidate, constraints))
+    : candidates;
+  const skuEligibleCandidates = candidates.filter(candidate => candidateMatchesBackendSku(candidate, skuConstraints));
+  const rankedCandidates = eligibleCandidates.length ? eligibleCandidates : skuEligibleCandidates.length ? skuEligibleCandidates : candidates;
+  return aggregateMetricsForCandidates(rankedCandidates).opportunityUnits;
 }
 
 function rankedLocationRecommendations(
@@ -489,7 +511,10 @@ function rankedLocationRecommendations(
     );
     const metrics = aggregateMetricsForCandidates(sameExecutionCandidates.length ? sameExecutionCandidates : [candidate]);
     const existing = recommendationsByLocation.get(candidateLoc);
-    if (existing && existing.liftPct >= metrics.liftPct) return;
+    if (existing && (
+      existing.opportunityUnits > metrics.opportunityUnits ||
+      (existing.opportunityUnits === metrics.opportunityUnits && existing.liftPct >= metrics.liftPct)
+    )) return;
     recommendationsByLocation.set(candidateLoc, {
       candidateIndex,
       location: candidateLoc,
@@ -500,7 +525,10 @@ function rankedLocationRecommendations(
     });
   });
 
-  return [...recommendationsByLocation.values()].sort((a, b) => b.liftPct - a.liftPct);
+  return [...recommendationsByLocation.values()].sort((a, b) =>
+    b.opportunityUnits - a.opportunityUnits ||
+    b.liftPct - a.liftPct
+  );
 }
 
 function recommendationImagePath(storeId: string, activity: string, originalIndex: number) {
@@ -522,7 +550,7 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
     if (modeDelta !== 0) return modeDelta;
     const aLockedSkus = a.skusStated !== "Not explicitly stated" ? splitSkus(a.skusStated, a.activity, a.packSizesStated) : [];
     const bLockedSkus = b.skusStated !== "Not explicitly stated" ? splitSkus(b.skusStated, b.activity, b.packSizesStated) : [];
-    return bestLiftPctForSource(b, b.optimizationCandidates, backendSkuConstraints(bLockedSkus)) - bestLiftPctForSource(a, a.optimizationCandidates, backendSkuConstraints(aLockedSkus));
+    return bestOpportunityUnitsForSource(b, b.optimizationCandidates, backendSkuConstraints(bLockedSkus)) - bestOpportunityUnitsForSource(a, a.optimizationCandidates, backendSkuConstraints(aLockedSkus));
   });
 
   const directives: OnAdDirective[] = rankedBoxes.map((box, boxIndex) => {
@@ -650,6 +678,9 @@ function candidateGroupKey(directive: OnAdDirective, candidate: PicOSOptimizatio
 
 function sortExecutionItems(items: PicOSExecutionItem[]) {
   return [...items].sort((a, b) => {
+    const aUnits = a.opportunityUnits ?? -Infinity;
+    const bUnits = b.opportunityUnits ?? -Infinity;
+    if (bUnits !== aUnits) return bUnits - aUnits;
     const aLift = a.liftPct ?? -Infinity;
     const bLift = b.liftPct ?? -Infinity;
     if (bLift !== aLift) return bLift - aLift;
@@ -743,6 +774,25 @@ function hasPositiveLift(liftPct: number | undefined) {
   return liftPct !== undefined && liftPct > 0;
 }
 
+function formatOutcomeTimestamp(value: string) {
+  const recordedAt = new Date(value);
+  if (Number.isNaN(recordedAt.getTime())) return "";
+
+  const now = new Date();
+  const isToday = recordedAt.toDateString() === now.toDateString();
+  const dateLabel = isToday
+    ? "today"
+    : recordedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const timeLabel = recordedAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+  return `${dateLabel}, ${timeLabel}`;
+}
+
+function outcomeReasonLabel(outcome: ActivityOutcome) {
+  if (outcome.executed) return "";
+  return outcome.reason === "Other" ? outcome.otherReason || "Other" : outcome.reason || "Not executed";
+}
+
 function candidateMetrics(candidate: PicOSOptimizationCandidate) {
   return {
     liftPct: candidate.liftPct,
@@ -825,7 +875,14 @@ function activityMetrics(items: PicOSExecutionItem[]) {
   };
 }
 
-export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto }: ExecutePicOSProps) {
+export default function ExecutePicOS({
+  store,
+  activityOutcomes = {},
+  lastActivityOutcomeId,
+  onBackToHub,
+  onUndoActivityOutcome,
+  onProceedToAfterPhoto
+}: ExecutePicOSProps) {
   const directives = useMemo(() => directivesForStore(store), [store]);
   const [directiveId, setDirectiveId] = useState(directives[0].id);
   const [candidateIndex, setCandidateIndex] = useState(() => initialCandidateIndexForSource(
@@ -834,6 +891,9 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
     backendSkuConstraints(directives[0].lockedSkus || directives[0].skus.map(sku => sku.name))
   ));
   const activeDirective = directives.find(d => d.id === directiveId) || directives[0];
+  const lastActivityOutcome = lastActivityOutcomeId ? activityOutcomes[lastActivityOutcomeId] : undefined;
+  const activeActivityOutcome = activityOutcomes[activeDirective.id];
+  const undoableActivityOutcome = activeActivityOutcome || lastActivityOutcome;
   const activeCandidate = activeDirective.optimizationCandidates?.[candidateIndex] || activeDirective.optimizationCandidates?.[0];
   const activeLocationConstraints = useMemo(() => extractAllowedLocations(activeDirective), [activeDirective]);
   const activeSkuConstraints = useMemo(
@@ -910,7 +970,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         seen.add(key);
         return true;
       })
-      .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)
+      .sort((a, b) => b.opportunityUnits - a.opportunityUnits || b.liftPct - a.liftPct)
       .slice(0, 3)
       .map(candidate => ({
         sku: candidate.sku,
@@ -1009,7 +1069,8 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
     const grouped = new Map<string, {
       candidateIndex: number;
       candidates: PicOSOptimizationCandidate[];
-      score: number;
+      scoreUnits: number;
+      scoreLift: number;
       opportunityUnits: number;
     }>();
 
@@ -1034,20 +1095,21 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
       );
       const metrics = aggregateMetricsForCandidates(groupCandidates.length ? groupCandidates : [candidate]);
 
-      if (!existing || metrics.liftPct > existing.score || (
-        metrics.liftPct === existing.score && metrics.opportunityUnits > existing.opportunityUnits
+      if (!existing || metrics.opportunityUnits > existing.scoreUnits || (
+        metrics.opportunityUnits === existing.scoreUnits && metrics.liftPct > existing.scoreLift
       )) {
         grouped.set(key, {
           candidateIndex: index,
           candidates: groupCandidates,
-          score: metrics.liftPct,
+          scoreUnits: metrics.opportunityUnits,
+          scoreLift: metrics.liftPct,
           opportunityUnits: metrics.opportunityUnits
         });
       }
     });
 
     return [...grouped.values()]
-      .sort((a, b) => b.score - a.score || b.opportunityUnits - a.opportunityUnits)[0]?.candidateIndex;
+      .sort((a, b) => b.scoreUnits - a.scoreUnits || b.scoreLift - a.scoreLift)[0]?.candidateIndex;
   };
 
   const handleCantDoLocation = () => {
@@ -1163,7 +1225,7 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
       .filter(candidate => candidateMatchesCurrentExecution(candidate))
       .filter(candidate => skuIdentity(candidate.sku) !== currentIdentity)
       .filter(candidate => !existingIdentities.has(skuIdentity(candidate.sku)))
-      .sort((a, b) => b.liftPct - a.liftPct || b.opportunityUnits - a.opportunityUnits)[0];
+      .sort((a, b) => b.opportunityUnits - a.opportunityUnits || b.liftPct - a.liftPct)[0];
 
     if (nextCandidate) {
       recordOverride({
@@ -1308,9 +1370,9 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
         <div className="hidden lg:flex items-center gap-1 font-mono text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-150 px-2.5 py-1 rounded">
           <span className="text-red-600 uppercase border-b border-red-600 pb-0.5">1. Recommendation</span>
           <span className="text-slate-300">-&gt;</span>
-          <span>2. After Photo</span>
+          <span>2. Outcome</span>
           <span className="text-slate-300">-&gt;</span>
-          <span>3. Execution Check</span>
+          <span>3. After Photo</span>
           <span className="text-slate-300">-&gt;</span>
           <span>4. Sync Summary</span>
         </div>
@@ -1328,43 +1390,64 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5 bg-slate-50/40">
             {directives.map((directive) => {
               const isSelected = directiveId === directive.id;
+              const outcome = activityOutcomes[directive.id];
+              const timestamp = outcome ? formatOutcomeTimestamp(outcome.recordedAt) : "";
+              const reason = outcome ? outcomeReasonLabel(outcome) : "";
               return (
                 <button
                   key={directive.id}
                   onClick={() => resetForDirective(directive.id)}
-                  className={`w-full p-2.5 rounded border transition-all cursor-pointer text-left ${
+                  className={`w-full rounded border transition-all cursor-pointer text-left overflow-hidden ${
                     isSelected
                       ? "bg-red-50/50 border-red-500 shadow-xs"
                       : "bg-white border-slate-200 hover:border-slate-300"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ${
-                        isSelected ? "bg-red-600 text-white" : "bg-slate-200 text-slate-700"
-                      }`}>
-                        #{directive.stackRank || directive.code}
-                      </span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 ${
-                        directive.mode === "Execute"
-                          ? "bg-red-50 text-red-700 border border-red-100"
-                          : "bg-slate-100 text-slate-600 border border-slate-200"
-                      }`}>
-                        {directive.mode}
-                      </span>
-                      {hasPositiveLift(directive.bestLiftPct) && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
-                          +{Math.round(directive.bestLiftPct || 0)}% lift
+                  <div className="p-2.5">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ${
+                          isSelected ? "bg-red-600 text-white" : "bg-slate-200 text-slate-700"
+                        }`}>
+                          #{directive.stackRank || directive.code}
                         </span>
-                      )}
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 ${
+                          directive.mode === "Execute"
+                            ? "bg-red-50 text-red-700 border border-red-100"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}>
+                          {directive.mode}
+                        </span>
+                        {hasPositiveLift(directive.bestLiftPct) && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            +{Math.round(directive.bestLiftPct || 0)}% lift
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] text-slate-400 font-mono font-semibold shrink-0">
+                        {directive.timing}
+                      </span>
                     </div>
-                    <span className="text-[9px] text-slate-400 font-mono font-semibold shrink-0">
-                      {directive.timing}
-                    </span>
+                    <h4 className={`text-xs font-bold leading-tight ${isSelected ? "text-red-950" : "text-slate-800"}`}>
+                      {directive.name}
+                    </h4>
                   </div>
-                  <h4 className={`text-xs font-bold leading-tight ${isSelected ? "text-red-950" : "text-slate-800"}`}>
-                    {directive.name}
-                  </h4>
+                  {outcome && (
+                    <div className={`px-2.5 py-2 border-t flex items-center gap-1.5 text-[10px] font-bold ${
+                      outcome.executed
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                        : "bg-amber-50 text-orange-700 border-amber-100"
+                    }`}>
+                      {outcome.executed ? (
+                        <Check className="h-3.5 w-3.5 shrink-0" />
+                      ) : (
+                        <CircleMinus className="h-3.5 w-3.5 shrink-0" />
+                      )}
+                      <span>{outcome.executed ? "Executed" : "Not executed"}</span>
+                      <span className={outcome.executed ? "text-emerald-500" : "text-orange-400"}>-</span>
+                      <span className="font-medium truncate">{outcome.executed ? timestamp : reason}</span>
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -1711,12 +1794,22 @@ export default function ExecutePicOS({ store, onBackToHub, onProceedToAfterPhoto
           </div>
 
           <footer className="border-t border-slate-200 bg-white px-5 py-4 flex items-center justify-end gap-4 shrink-0 shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
+            {undoableActivityOutcome && onUndoActivityOutcome && (
+              <button
+                id="undo-last-picos-outcome"
+                onClick={() => onUndoActivityOutcome(undoableActivityOutcome.directiveId)}
+                className="border border-slate-300 hover:bg-slate-50 text-slate-800 font-extrabold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-1.5 transition-colors"
+              >
+                <Undo2 className="h-4 w-4" />
+                Undo
+              </button>
+            )}
             <button
               id="proceed-after-picos"
               onClick={() => onProceedToAfterPhoto(constraints)}
               className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold py-3 px-8 rounded text-xs uppercase tracking-wider font-mono cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
             >
-              Confirm & Take After Photo <ArrowRight className="h-4.5 w-4.5" />
+              Record Outcome <ArrowRight className="h-4.5 w-4.5" />
             </button>
           </footer>
         </main>
