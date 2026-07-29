@@ -600,11 +600,14 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
   if (store.id === "walmart-sc-5189") {
     const baseEndcap = directives.find(directive => directive.name === "Execute: Walmart End Cap Displays -2L Update");
     if (baseEndcap) {
+      baseEndcap.code = `${baseEndcap.code}A`;
+      baseEndcap.stackRank = undefined;
+
       const planogramDirective: OnAdDirective = {
         ...baseEndcap,
         id: `${store.id}-walmart-endcap-2l-planogram`,
-        code: `${baseEndcap.code}A`,
-        stackRank: undefined,
+        code: "1",
+        stackRank: 1,
         name: "Walmart Endcap 2L Display Setup",
         details: "Set the main Walmart endcap to match the planogram image. Keep the existing 12pk block and core 2L presence while adding the recommended 2L items.",
         sourceImage: undefined,
@@ -627,7 +630,7 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
           { sku: "CHERRY COKE ZERO 2L SINGLE BTL", facings: 3 }
         ]
       };
-      const insertIndex = directives.indexOf(baseEndcap) + 1;
+      const insertIndex = directives.indexOf(baseEndcap);
       directives.splice(insertIndex, 0, planogramDirective);
     }
   }
@@ -766,7 +769,7 @@ function sourceLabel(source: PicOSRecommendationSource) {
 
 function liftLabel(liftPct: number | undefined, opportunityUnits: number | undefined) {
   const lift = liftPct === undefined ? "0%" : `${liftPct >= 0 ? "+" : ""}${Math.round(liftPct)}%`;
-  const units = opportunityUnits === undefined ? "0.0 units" : `${opportunityUnits >= 0 ? "+" : ""}${opportunityUnits.toFixed(1)} units`;
+  const units = opportunityUnits === undefined ? "0 units" : `${opportunityUnits >= 0 ? "+" : ""}${Math.round(opportunityUnits)} units`;
   return `${lift} lift / ${units}`;
 }
 
@@ -1393,6 +1396,7 @@ export default function ExecutePicOS({
               const outcome = activityOutcomes[directive.id];
               const timestamp = outcome ? formatOutcomeTimestamp(outcome.recordedAt) : "";
               const reason = outcome ? outcomeReasonLabel(outcome) : "";
+              const listMetrics = aggregateMetricsForCandidates(directive.optimizationCandidates || []);
               return (
                 <button
                   key={directive.id}
@@ -1404,8 +1408,8 @@ export default function ExecutePicOS({
                   }`}
                 >
                   <div className="p-2.5">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ${
                           isSelected ? "bg-red-600 text-white" : "bg-slate-200 text-slate-700"
                         }`}>
@@ -1418,9 +1422,9 @@ export default function ExecutePicOS({
                         }`}>
                           {directive.mode}
                         </span>
-                        {hasPositiveLift(directive.bestLiftPct) && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
-                            +{Math.round(directive.bestLiftPct || 0)}% lift
+                        {(hasPositiveLift(directive.bestLiftPct) || listMetrics.opportunityUnits > 0) && (
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded font-mono uppercase shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            +{Math.round(directive.bestLiftPct || listMetrics.liftPct || 0)}% / +{Math.round(listMetrics.opportunityUnits)} units
                           </span>
                         )}
                       </div>
@@ -1580,7 +1584,7 @@ export default function ExecutePicOS({
                     <div className="rounded border border-emerald-100 bg-emerald-50 px-2 py-1.5">
                       <div className="text-emerald-700 uppercase font-bold">Activity lift</div>
                       <div className="text-emerald-900 font-bold truncate">
-                        +{currentActivityMetrics.aggregateLiftPct}% / +{currentActivityMetrics.totalOpportunityUnits.toFixed(1)} units
+                        +{currentActivityMetrics.aggregateLiftPct}% / +{Math.round(currentActivityMetrics.totalOpportunityUnits)} units
                       </div>
                     </div>
                   )}
