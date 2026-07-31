@@ -1523,14 +1523,19 @@ export default function ExecutePicOS({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-4 items-stretch">
-                <div className="rounded-lg border border-slate-200 bg-white min-h-[520px] h-full flex items-center justify-center p-4 lg:p-6">
-                  {canShowActivityImage && (
-                    <img
-                      src={recommendationVisual}
-                      alt={`${activeDirective.name} shelf setup`}
-                      className="w-full max-w-[760px] max-h-[500px] object-contain bg-white"
-                    />
-                  )}
+                <div className="rounded-lg border border-slate-200 bg-white min-h-[520px] h-full flex flex-col p-4 lg:p-6">
+                  <p className="text-[10px] text-slate-400 font-mono mb-3">
+                    Example layout. Your shelf or display may look different.
+                  </p>
+                  <div className="flex-1 min-h-0 flex items-center justify-center">
+                    {canShowActivityImage && (
+                      <img
+                        src={recommendationVisual}
+                        alt={`${activeDirective.name} shelf setup`}
+                        className="w-full max-w-[760px] max-h-[500px] object-contain bg-white"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 <aside className="self-stretch space-y-4 flex flex-col">
