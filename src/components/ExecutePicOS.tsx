@@ -598,40 +598,64 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
   });
 
   if (store.id === "walmart-sc-5189") {
+    const chickenWarmer = directives.find(directive => directive.name === "Execute: Walmart Chicken Warmer Fixture");
+    if (chickenWarmer) {
+      chickenWarmer.code = "2";
+      chickenWarmer.stackRank = 2;
+      chickenWarmer.details = "Execute the chicken warmer fixture with two visible shelves of 7.5oz 10-pack mini cans. The shelf image and build list show the 16 facings that fit directly on the fixture; remaining recommended mini-can SKUs are listed separately.";
+      chickenWarmer.recommendationImage = "/picos-recommendations/walmart-sc-5189/01-execute-walmart-chicken-warmer-fixture.png";
+      chickenWarmer.planogramItems = [
+        { sku: "COCA-COLA OREO ZERO SUGAR 7.5OZ 10PK CAN", facings: 6 },
+        { sku: "DIET COKE 7.5OZ 10PK CAN", facings: 6 },
+        { sku: "CHERRY COKE 7.5OZ 10PK CAN", facings: 2 },
+        { sku: "COCA-COLA ORANGE CREAM 7.5OZ 10PK CAN", facings: 2 }
+      ];
+      chickenWarmer.additionalItems = [
+        { sku: "FRESCA GRAPEFRUIT 7.5OZ 10PK CAN", facings: 3 },
+        { sku: "COCA-COLA ORANGE CREAM 7.5OZ 10PK CAN", facings: 2 },
+        { sku: "SPRITE WINTER SPICED CRANBERRY 7.5OZ 10PK CAN", facings: 7 },
+        { sku: "SPRITE 7.5OZ 10PK CAN", facings: 9 },
+        { sku: "FANTA 7.5OZ 10PK CAN", facings: 4 },
+        { sku: "DIET SPRITE ZERO 7.5OZ 10PK CAN", facings: 8 },
+        { sku: "COKE 7.5OZ 10PK CAN", facings: 18 }
+      ];
+    }
+
     const baseEndcap = directives.find(directive => directive.name === "Execute: Walmart End Cap Displays -2L Update");
     if (baseEndcap) {
-      baseEndcap.code = `${baseEndcap.code}A`;
-      baseEndcap.stackRank = undefined;
-
       const planogramDirective: OnAdDirective = {
         ...baseEndcap,
         id: `${store.id}-walmart-endcap-2l-planogram`,
         code: "1",
         stackRank: 1,
         name: "Walmart Endcap 2L Display Setup",
-        details: "Set the main Walmart endcap to match the planogram image. Keep the existing 12pk block and core 2L presence while adding the recommended 2L items.",
+        details: "Set the main Walmart endcap as a five-shelf, 10-bottle-wide display ordered like the PDF brand flow: 2L block first by Coke family, Sprite, then flavors; keep Smartwater and 12pk support blocks separate.",
         sourceImage: undefined,
         recommendationImage: "/picos-recommendations/walmart-sc-5189/02-execute-walmart-end-cap-displays-2l-update.png",
         planogramImage: "/picos-boxes/walmart-endcap-2l-display-planogram.png",
         planogramItems: [
-          { sku: "SMARTWATER 1L SINGLE BTL", facings: 6 },
-          { sku: "SPRITE 2L SINGLE BTL", facings: 5 },
-          { sku: "DIET COKE CF 2L SINGLE BTL", facings: 4 },
-          { sku: "SEAGRAM'S 2L SINGLE BTL", facings: 2 },
-          { sku: "CHERRY COKE ZERO 2L SINGLE BTL", facings: 3 },
           { sku: "COKE 2L SINGLE BTL", facings: 6 },
           { sku: "COCA-COLA ZERO SUGAR 2L SINGLE BTL", facings: 5 },
-          { sku: "SPRITE 12OZ 12PK CAN", facings: 3 },
-          { sku: "COKE 12OZ 12PK CAN", facings: 9 },
-          { sku: "COCA-COLA ZERO SUGAR 12OZ 12PK CAN", facings: 3 }
+          { sku: "COCA-COLA ZERO SUGAR 2L SINGLE BTL", facings: 1 },
+          { sku: "DIET COKE CF 2L SINGLE BTL", facings: 4 },
+          { sku: "CHERRY COKE ZERO 2L SINGLE BTL", facings: 3 },
+          { sku: "SPRITE 2L SINGLE BTL", facings: 3 },
+          { sku: "SPRITE 2L SINGLE BTL", facings: 3 },
+          { sku: "FANTA 2L SINGLE BTL", facings: 2 },
+          { sku: "SEAGRAM'S 2L SINGLE BTL", facings: 2 },
+          { sku: "SMARTWATER 1L SINGLE BTL", facings: 5 },
+          { sku: "COKE 12OZ 12PK CAN", facings: 7 },
+          { sku: "COKE 12OZ 12PK CAN", facings: 1 },
+          { sku: "COCA-COLA ZERO SUGAR 12OZ 12PK CAN", facings: 3 },
+          { sku: "SPRITE 12OZ 12PK CAN", facings: 3 }
         ],
         additionalItems: [
-          { sku: "FANTA 2L SINGLE BTL", facings: 2 },
-          { sku: "CHERRY COKE ZERO 2L SINGLE BTL", facings: 3 }
+          { sku: "SMARTWATER 1L SINGLE BTL", facings: 1 },
+          { sku: "COKE 12OZ 12PK CAN", facings: 1 }
         ]
       };
       const insertIndex = directives.indexOf(baseEndcap);
-      directives.splice(insertIndex, 0, planogramDirective);
+      directives.splice(insertIndex, 1, planogramDirective);
     }
   }
 
@@ -937,6 +961,10 @@ export default function ExecutePicOS({
   const totalFacings = items.reduce((sum, item) => sum + item.targetFacings, 0);
   const currentActivityMetrics = activityMetrics(items);
   const recommendationVisual = activeDirective.planogramImage || activeDirective.recommendationImage || activeDirective.sourceImage;
+  const canShowActivityImage = store.id === "walmart-sc-5189" && (
+    activeDirective.id === "walmart-sc-5189-walmart-endcap-2l-planogram" ||
+    activeDirective.name === "Execute: Walmart Chicken Warmer Fixture"
+  );
   const isPlanogramActivity = Boolean(recommendationVisual);
   const planogramShelves = useMemo(() => {
     const planogramItems = activeDirective.planogramItems || [];
@@ -955,7 +983,11 @@ export default function ExecutePicOS({
       return genericSections;
     }
 
-    const shelfSizes = [2, 3, 1, 2, 1, 1];
+    const shelfSizes = activeDirective.id === "walmart-sc-5189-walmart-endcap-2l-planogram"
+      ? [2, 4, 4, 1, 3]
+      : activeDirective.name === "Execute: Walmart Chicken Warmer Fixture"
+        ? [2, 2]
+        : [2, 3, 1, 2, 1, 1];
     let cursor = 0;
     return shelfSizes
       .map((size, index) => {
@@ -1492,11 +1524,13 @@ export default function ExecutePicOS({
 
               <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-4 items-stretch">
                 <div className="rounded-lg border border-slate-200 bg-white min-h-[520px] h-full flex items-center justify-center p-4 lg:p-6">
-                  <img
-                    src={recommendationVisual}
-                    alt={`${activeDirective.name} shelf setup`}
-                    className="w-full max-w-[760px] max-h-[500px] object-contain bg-white"
-                  />
+                  {canShowActivityImage && (
+                    <img
+                      src={recommendationVisual}
+                      alt={`${activeDirective.name} shelf setup`}
+                      className="w-full max-w-[760px] max-h-[500px] object-contain bg-white"
+                    />
+                  )}
                 </div>
 
                 <aside className="self-stretch space-y-4 flex flex-col">
@@ -1579,11 +1613,13 @@ export default function ExecutePicOS({
               <div className="flex flex-col sm:flex-row lg:items-start gap-2 shrink-0">
                 {activeDirective.sourceImage && (
                   <div className="w-full sm:w-[260px] rounded border border-slate-200 bg-slate-50 overflow-hidden">
-                    <img
-                      src={activeDirective.sourceImage}
-                      alt={`${activeDirective.name} PDF activity box`}
-                      className="w-full h-[120px] object-contain bg-white"
-                    />
+                    {canShowActivityImage && (
+                      <img
+                        src={activeDirective.sourceImage}
+                        alt={`${activeDirective.name} PDF activity box`}
+                        className="w-full h-[120px] object-contain bg-white"
+                      />
+                    )}
                   </div>
                 )}
                 <div className="grid grid-cols-1 gap-2 text-[10px] font-mono text-slate-600 min-w-[170px]">
@@ -1625,11 +1661,13 @@ export default function ExecutePicOS({
                   </span>
                 </div>
                 <div className="min-h-[260px] max-h-[420px] p-4 flex items-center justify-center bg-white">
-                  <img
-                    src={activeDirective.recommendationImage}
-                    alt={`${activeDirective.name} recommended display`}
-                    className="w-full max-h-[380px] object-contain bg-white"
-                  />
+                  {canShowActivityImage && (
+                    <img
+                      src={activeDirective.recommendationImage}
+                      alt={`${activeDirective.name} recommended display`}
+                      className="w-full max-h-[380px] object-contain bg-white"
+                    />
+                  )}
                 </div>
               </div>
 

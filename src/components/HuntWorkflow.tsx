@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { FlowLiftMetrics, FlowType, Screen, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
-import { ArrowLeft, ArrowRight, Check, Filter } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Filter } from "lucide-react";
 
 interface HuntWorkflowProps {
   store: StoreInfo;
@@ -25,6 +25,7 @@ type HuntOpportunity = {
 };
 
 type StatusFilter = "All" | "To do" | "Executed" | "Covered";
+type FilterMenuId = "location" | "displayType" | "sort" | "status";
 
 function signedPercent(value: number) {
   return `${value > 0 ? "+" : ""}${value}%`;
@@ -33,6 +34,82 @@ function signedPercent(value: number) {
 function PositiveLift({ value, suffix = "" }: { value: number; suffix?: string }) {
   if (value <= 0) return null;
   return <>{signedPercent(value)}{suffix}</>;
+}
+
+function FilterMenu({
+  id,
+  label,
+  value,
+  options,
+  openMenu,
+  setOpenMenu,
+  onChange
+}: {
+  id: FilterMenuId;
+  label: string;
+  value: string;
+  options: string[];
+  openMenu: FilterMenuId | null;
+  setOpenMenu: (id: FilterMenuId | null) => void;
+  onChange: (value: string) => void;
+}) {
+  const isOpen = openMenu === id;
+
+  return (
+    <div
+      className="relative space-y-1 min-w-0"
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setOpenMenu(null);
+        }
+      }}
+    >
+      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+        {label}
+      </span>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setOpenMenu(isOpen ? null : id)}
+        className="w-full h-11 rounded border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 flex items-center justify-between gap-2 cursor-pointer text-left"
+      >
+        <span className="truncate">{value}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div
+          role="listbox"
+          className="absolute z-30 mt-1 w-full max-h-[min(18rem,45vh)] overflow-y-auto rounded border border-slate-200 bg-white shadow-xl"
+        >
+          {options.map(option => {
+            const isSelected = option === value;
+            return (
+              <button
+                key={option}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => {
+                  onChange(option);
+                  setOpenMenu(null);
+                }}
+                className={`w-full px-3 py-2.5 text-left text-xs leading-snug cursor-pointer ${
+                  isSelected
+                    ? "bg-red-50 text-red-700 font-bold"
+                    : "text-slate-700 hover:bg-slate-50 font-semibold"
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function formatOutcomeTimestamp(value: string) {
@@ -131,6 +208,7 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
   const [displayTypeFilter, setDisplayTypeFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"lift" | "units">("units");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+  const [openMenu, setOpenMenu] = useState<FilterMenuId | null>(null);
 
   const opportunities = useMemo(() => getHuntOpportunities(store), [store]);
 
@@ -193,58 +271,46 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
               <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Filters</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_160px_160px] gap-3">
-              <label className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Location</span>
-                <select
-                  value={locationFilter}
-                  onChange={event => setLocationFilter(event.target.value)}
-                  className="w-full h-11 rounded border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
-                >
-                  {locations.map(location => (
-                    <option key={location} value={location}>{location}</option>
-                  ))}
-                </select>
-              </label>
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(8rem,10rem)_minmax(8rem,10rem)] gap-3">
+              <FilterMenu
+                id="location"
+                label="Location"
+                value={locationFilter}
+                options={locations}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                onChange={setLocationFilter}
+              />
 
-              <label className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Display Type</span>
-                <select
-                  value={displayTypeFilter}
-                  onChange={event => setDisplayTypeFilter(event.target.value)}
-                  className="w-full h-11 rounded border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
-                >
-                  {displayTypes.map(displayType => (
-                    <option key={displayType} value={displayType}>{displayType}</option>
-                  ))}
-                </select>
-              </label>
+              <FilterMenu
+                id="displayType"
+                label="Display Type"
+                value={displayTypeFilter}
+                options={displayTypes}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                onChange={setDisplayTypeFilter}
+              />
 
-              <label className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Sort</span>
-                <select
-                  value={sortBy}
-                  onChange={event => setSortBy(event.target.value as "lift" | "units")}
-                  className="w-full h-11 rounded border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
-                >
-                  <option value="units">Most units</option>
-                  <option value="lift">Highest lift</option>
-                </select>
-              </label>
+              <FilterMenu
+                id="sort"
+                label="Sort"
+                value={sortBy === "units" ? "Most units" : "Highest lift"}
+                options={["Most units", "Highest lift"]}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                onChange={option => setSortBy(option === "Highest lift" ? "lift" : "units")}
+              />
 
-              <label className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Status</span>
-                <select
-                  value={statusFilter}
-                  onChange={event => setStatusFilter(event.target.value as StatusFilter)}
-                  className="w-full h-11 rounded border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
-                >
-                  <option value="All">All</option>
-                  <option value="To do">To do</option>
-                  <option value="Executed">Executed</option>
-                  <option value="Covered">Covered</option>
-                </select>
-              </label>
+              <FilterMenu
+                id="status"
+                label="Status"
+                value={statusFilter}
+                options={["All", "To do", "Executed", "Covered"]}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                onChange={option => setStatusFilter(option as StatusFilter)}
+              />
             </div>
           </section>
 
