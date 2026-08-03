@@ -1,27 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FlowType, StoreInfo } from "../types";
 import { ArrowLeft, Check, RefreshCw } from "lucide-react";
 
 interface PhotoCaptureProps {
-  store: StoreInfo;
-  photoType: "BEFORE" | "AFTER";
-  flowType: FlowType;
   onConfirmPhoto: () => void;
   onCancel: () => void;
 }
 
-export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCancel }: PhotoCaptureProps) {
+export default function PhotoCapture({ onConfirmPhoto, onCancel }: PhotoCaptureProps) {
   const [isCaptured, setIsCaptured] = useState(false);
   const [isShutterFlashing, setIsShutterFlashing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const direction = flowType === "EXECUTE_PICOS"
-    ? "Capture the completed PicOS activity."
-    : flowType === "HUNT_SPACE"
-      ? "Capture the display opportunity."
-      : "Capture the optimized display.";
+  const direction = "Capture the optimized display.";
 
   useEffect(() => {
     let isMounted = true;
@@ -166,7 +158,7 @@ export default function PhotoCapture({ photoType, flowType, onConfirmPhoto, onCa
               onClick={onConfirmPhoto}
               className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 px-6 rounded text-xs uppercase tracking-wider font-mono cursor-pointer transition-colors flex items-center justify-center gap-2"
             >
-              {flowType === "EXECUTE_PICOS" || flowType === "HUNT_SPACE" ? "Save Outcome" : "Confirm & Proceed"} <Check className="h-4 w-4" />
+              Confirm & Proceed <Check className="h-4 w-4" />
             </button>
             <button
               id="retake-photo"

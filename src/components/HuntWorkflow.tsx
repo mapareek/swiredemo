@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { FlowLiftMetrics, FlowType, Screen, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Filter } from "lucide-react";
+import { FlowLiftMetrics, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
+import { ArrowLeft, Check, ChevronDown, Filter } from "lucide-react";
 
 interface HuntWorkflowProps {
   store: StoreInfo;
   huntOutcomes?: Record<string, string>;
   onBackToHub: () => void;
-  onSelectAction: (nextScreen: Screen, flowType: FlowType, metrics?: FlowLiftMetrics, opportunityId?: string) => void;
+  onConfirmOpportunity: (metrics: FlowLiftMetrics, opportunityId: string) => void;
 }
 
 type CandidateWithBox = PicOSOptimizationCandidate & {
@@ -203,7 +203,7 @@ function getHuntOpportunities(store: StoreInfo): HuntOpportunity[] {
     );
 }
 
-export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, onSelectAction }: HuntWorkflowProps) {
+export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, onConfirmOpportunity }: HuntWorkflowProps) {
   const [locationFilter, setLocationFilter] = useState("All");
   const [displayTypeFilter, setDisplayTypeFilter] = useState("All");
   const [sortBy, setSortBy] = useState<"lift" | "units">("units");
@@ -388,7 +388,7 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
                     <div className="mt-4 flex justify-end">
                       <button
                         disabled={isConfirmed}
-                        onClick={() => onSelectAction(Screen.BEFORE_PHOTO, "HUNT_SPACE", {
+                        onClick={() => onConfirmOpportunity({
                           liftPct: opportunity.bestLiftPct,
                           opportunityUnits: opportunity.totalUnits
                         }, opportunity.id)}
@@ -398,7 +398,7 @@ export default function HuntWorkflow({ store, huntOutcomes = {}, onBackToHub, on
                             : "bg-red-600 hover:bg-red-700 text-white cursor-pointer"
                         }`}
                       >
-                        {isConfirmed ? "Executed" : "Confirm Display"} <ArrowRight className="h-4 w-4" />
+                        {isConfirmed ? "Executed" : "Confirm Display"} {!isConfirmed && <Check className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>

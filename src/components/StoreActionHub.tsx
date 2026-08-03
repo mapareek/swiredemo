@@ -1,6 +1,6 @@
 import React from "react";
 import { Screen, StoreInfo } from "../types";
-import { ArrowLeft, CheckSquare, Compass, LogOut, UserRound } from "lucide-react";
+import { ArrowLeft, CheckSquare, Compass, LogOut, SlidersHorizontal, UserRound } from "lucide-react";
 
 interface StoreActionHubProps {
   store: StoreInfo;
@@ -93,6 +93,28 @@ export default function StoreActionHub({ store, onBackToSelector, onNavigate, on
                 <button
                   id="hunt-wf-btn"
                   onClick={() => onNavigate(Screen.HUNT_WORKFLOW)}
+                  className="w-full bg-slate-950 hover:bg-black active:bg-black text-white font-semibold py-2.5 px-4 rounded text-xs transition-all uppercase tracking-wider cursor-pointer"
+                >
+                  Start
+                </button>
+              </div>
+            </section>
+
+            <section className="bg-white border border-slate-200 rounded-lg p-5 min-h-[176px] flex flex-col shadow-xs">
+              <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600 mb-5">
+                <SlidersHorizontal className="h-4.5 w-4.5" />
+              </div>
+              <h3 className="font-bold text-slate-950 text-base">Optimize Display</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed max-w-md">
+                Select an existing display by location and type, then verify the top packs that should be present.
+              </p>
+              <div className="mt-auto pt-5">
+                <div className="text-xs text-slate-600 mb-3">
+                  {opportunityCount} pack signals available
+                </div>
+                <button
+                  id="optimize-display-btn"
+                  onClick={() => onNavigate(Screen.OPTIMIZE_DISPLAY)}
                   className="w-full bg-slate-950 hover:bg-black active:bg-black text-white font-semibold py-2.5 px-4 rounded text-xs transition-all uppercase tracking-wider cursor-pointer"
                 >
                   Start

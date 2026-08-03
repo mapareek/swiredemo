@@ -39,7 +39,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
   };
 
   const submitLabel = executed === true
-    ? "Continue to Camera"
+    ? "Confirm Execution"
     : reason === "Merchandiser visit needed"
       ? "Continue to Handoff"
       : "Return to Activities";
@@ -75,9 +75,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
           <span className="text-slate-300">-&gt;</span>
           <span className="text-red-600 uppercase border-b border-red-600 pb-0.5">2. Execution Check</span>
           <span className="text-slate-300">-&gt;</span>
-          <span>3. After Photo</span>
-          <span className="text-slate-300">-&gt;</span>
-          <span>4. Saved</span>
+          <span>3. Saved</span>
         </div>
       </header>
 
@@ -125,7 +123,7 @@ export default function RemovalSurvey({ onBackToPhoto, onSubmit }: RemovalSurvey
               <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-bold text-emerald-900">Great, execution confirmed.</h3>
-                <p className="text-sm text-emerald-800 mt-1">Continue to capture the completed activity photo.</p>
+                <p className="text-sm text-emerald-800 mt-1">Confirm to save the activity with the current timestamp.</p>
               </div>
             </section>
           )}
