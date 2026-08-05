@@ -153,6 +153,39 @@ function dedupeProducts(candidates: CandidateWithBox[]) {
 }
 
 function getHuntOpportunities(store: StoreInfo): HuntOpportunity[] {
+  if (store.displayOpportunities?.length) {
+    return store.displayOpportunities
+      .map(opportunity => {
+        const products = dedupeProducts(
+          opportunity.packRecommendations.map(product => ({ ...product, sourceMode: "Sell" as const }))
+            .sort((a, b) =>
+              b.liftPct - a.liftPct ||
+              b.opportunityUnits - a.opportunityUnits ||
+              (a.shelfRank ?? a.rank) - (b.shelfRank ?? b.rank)
+            )
+        ).slice(0, 4);
+        const averageLiftPct = products.length
+          ? Math.round(products.reduce((sum, product) => sum + product.liftPct, 0) / products.length)
+          : 0;
+        return {
+          id: opportunity.id,
+          location: opportunity.location,
+          displayType: opportunity.displayType,
+          coveredByPicos: opportunity.coveredByPicos,
+          bestLiftPct: Math.round(opportunity.bestLiftPct),
+          averageLiftPct,
+          totalUnits: opportunity.totalOpportunityUnits,
+          products
+        };
+      })
+      .filter(opportunity => opportunity.products.length > 0)
+      .sort((a, b) =>
+        Number(a.coveredByPicos) - Number(b.coveredByPicos) ||
+        b.totalUnits - a.totalUnits ||
+        b.bestLiftPct - a.bestLiftPct
+      );
+  }
+
   const coveredKeys = new Set(
     store.picosBoxes
       .filter(box => box.mode === "Execute")

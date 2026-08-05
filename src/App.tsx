@@ -26,6 +26,7 @@ export default function App() {
   const [activityOutcomes, setActivityOutcomes] = useState<Record<string, ActivityOutcome>>({});
   const [lastActivityOutcomeId, setLastActivityOutcomeId] = useState<string | null>(null);
   const [huntOutcomes, setHuntOutcomes] = useState<Record<string, string>>({});
+  const [optimizeDisplayOutcomes, setOptimizeDisplayOutcomes] = useState<Record<string, string>>({});
   
   // Toast Alert Notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -52,6 +53,7 @@ export default function App() {
     setActivityOutcomes({});
     setLastActivityOutcomeId(null);
     setHuntOutcomes({});
+    setOptimizeDisplayOutcomes({});
     setCurrentScreen(Screen.ACTION_HUB);
     triggerToast(`Visit started at ${store.storeName}`);
   };
@@ -82,6 +84,17 @@ export default function App() {
     }));
     setCurrentScreen(Screen.HUNT_WORKFLOW);
     triggerToast("Hunt display confirmed and timestamped.", "success");
+  };
+
+  const handleConfirmOptimizeDisplay = (metrics: FlowLiftMetrics, displayId: string) => {
+    setFlowType("OPTIMIZE_DISPLAY");
+    setFlowLiftMetrics(metrics || null);
+    setOptimizeDisplayOutcomes(prev => ({
+      ...prev,
+      [displayId]: new Date().toISOString()
+    }));
+    setCurrentScreen(Screen.OPTIMIZE_DISPLAY);
+    triggerToast("Display optimization recorded and timestamped.", "success");
   };
 
   // PicOS configuration complete
@@ -166,6 +179,7 @@ export default function App() {
     setActivityOutcomes({});
     setLastActivityOutcomeId(null);
     setHuntOutcomes({});
+    setOptimizeDisplayOutcomes({});
   };
 
   return (
@@ -215,7 +229,9 @@ export default function App() {
       {currentScreen === Screen.OPTIMIZE_DISPLAY && (
         <OptimizeDisplay
           store={selectedStore}
+          optimizeDisplayOutcomes={optimizeDisplayOutcomes}
           onBackToHub={handleBackToHub}
+          onConfirmDisplay={handleConfirmOptimizeDisplay}
         />
       )}
 

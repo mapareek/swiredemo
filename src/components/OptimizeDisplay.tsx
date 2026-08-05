@@ -1,18 +1,22 @@
-import React, { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, ChevronDown, List, PackageCheck, Sliders } from "lucide-react";
-import { IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
+import React, { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Filter, List, PackageCheck, Sliders } from "lucide-react";
+import { FlowLiftMetrics, IMAGES, PicOSOptimizationCandidate, StoreInfo } from "../types";
 
 interface OptimizeDisplayProps {
   store: StoreInfo;
+  optimizeDisplayOutcomes?: Record<string, string>;
   onBackToHub: () => void;
+  onConfirmDisplay: (metrics: FlowLiftMetrics, displayId: string) => void;
 }
 
 type OptimizeView = "SELECT_DISPLAY" | "TOP_PACKS" | "FULL_LIST";
+type StatusFilter = "All" | "To do" | "Recorded" | "Covered";
 
 type DisplayGroup = {
   id: string;
   displayType: string;
   location: string;
+  coveredByPicos: boolean;
   candidates: PicOSOptimizationCandidate[];
   topPacks: PicOSOptimizationCandidate[];
   totalUnits: number;
@@ -49,7 +53,46 @@ function signedPercent(value: number) {
   return `${value > 0 ? "+" : ""}${value}%`;
 }
 
+function formatOutcomeTimestamp(value: string) {
+  const recordedAt = new Date(value);
+  if (Number.isNaN(recordedAt.getTime())) return "";
+
+  const now = new Date();
+  const isToday = recordedAt.toDateString() === now.toDateString();
+  const dateLabel = isToday
+    ? "today"
+    : recordedAt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const timeLabel = recordedAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+  return `${dateLabel}, ${timeLabel}`;
+}
+
 function getDisplayGroups(store: StoreInfo): DisplayGroup[] {
+  if (store.displayOpportunities?.length) {
+    return store.displayOpportunities
+      .map(opportunity => {
+        const topPacks = dedupePacks(
+          [...opportunity.packRecommendations].sort((a, b) =>
+            b.liftPct - a.liftPct ||
+            b.opportunityUnits - a.opportunityUnits ||
+            (a.shelfRank ?? a.rank) - (b.shelfRank ?? b.rank)
+          )
+        );
+        return {
+          id: opportunity.id,
+          displayType: opportunity.displayType,
+          location: opportunity.location,
+          coveredByPicos: opportunity.coveredByPicos,
+          candidates: opportunity.packRecommendations,
+          topPacks,
+          totalUnits: opportunity.totalOpportunityUnits,
+          bestLiftPct: Math.round(opportunity.bestLiftPct)
+        };
+      })
+      .filter(group => group.topPacks.length > 0)
+      .sort((a, b) => b.totalUnits - a.totalUnits || b.bestLiftPct - a.bestLiftPct);
+  }
+
   const groups = new Map<string, PicOSOptimizationCandidate[]>();
 
   store.picosBoxes.forEach(box => {
@@ -75,6 +118,7 @@ function getDisplayGroups(store: StoreInfo): DisplayGroup[] {
         id,
         displayType,
         location,
+        coveredByPicos: false,
         candidates,
         topPacks,
         totalUnits: topPacks.reduce((sum, pack) => sum + pack.opportunityUnits, 0),
@@ -118,6 +162,7 @@ function SelectField({
 }
 
 const PackCard: React.FC<{ pack: PicOSOptimizationCandidate; rank: number }> = ({ pack, rank }) => {
+  const displayRank = pack.shelfRank ?? rank;
   return (
     <section className="bg-white border border-slate-200 rounded p-4 shadow-xs min-w-0">
       <div className="flex items-start gap-3">
@@ -127,7 +172,7 @@ const PackCard: React.FC<{ pack: PicOSOptimizationCandidate; rank: number }> = (
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 text-[10px] font-bold font-mono">
-              #{rank}
+              #{displayRank}
             </span>
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
               {pack.packSize}
@@ -154,15 +199,29 @@ const PackCard: React.FC<{ pack: PicOSOptimizationCandidate; rank: number }> = (
   );
 };
 
-export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayProps) {
+export default function OptimizeDisplay({
+  store,
+  optimizeDisplayOutcomes = {},
+  onBackToHub,
+  onConfirmDisplay
+}: OptimizeDisplayProps) {
   const [view, setView] = useState<OptimizeView>("SELECT_DISPLAY");
   const displayGroups = useMemo(() => getDisplayGroups(store), [store]);
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [listLocationFilter, setListLocationFilter] = useState("All");
+  const [listDisplayTypeFilter, setListDisplayTypeFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+
   const displayTypeOptions = useMemo(
     () => dedupeByNormalized(displayGroups.map(group => group.displayType)).sort(),
     [displayGroups]
   );
 
-  const [displayType, setDisplayType] = useState(displayTypeOptions[0] || "Display");
+  const selectedGroup = useMemo(() => {
+    return displayGroups.find(group => group.id === selectedGroupId) || displayGroups[0];
+  }, [displayGroups, selectedGroupId]);
+
+  const displayType = selectedGroup?.displayType || displayTypeOptions[0] || "";
   const locationOptions = useMemo(
     () => dedupeByNormalized(
       displayGroups
@@ -171,26 +230,63 @@ export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayP
     ).sort(),
     [displayGroups, displayType]
   );
-  const [location, setLocation] = useState(locationOptions[0] || "");
+  const location = selectedGroup?.location || locationOptions[0] || "";
 
-  const selectedGroup = useMemo(() => {
-    return displayGroups.find(group => group.displayType === displayType && group.location === location) || displayGroups[0];
-  }, [displayGroups, displayType, location]);
+  const listLocationOptions = useMemo(
+    () => ["All", ...dedupeByNormalized(displayGroups.map(group => group.location)).sort()],
+    [displayGroups]
+  );
+
+  const listDisplayTypeOptions = useMemo(
+    () => ["All", ...displayTypeOptions],
+    [displayTypeOptions]
+  );
+
+  const filteredDisplayGroups = useMemo(() => {
+    return displayGroups
+      .filter(group => listLocationFilter === "All" || group.location === listLocationFilter)
+      .filter(group => listDisplayTypeFilter === "All" || group.displayType === listDisplayTypeFilter)
+      .filter(group => {
+        const isRecorded = Boolean(optimizeDisplayOutcomes[group.id]);
+        if (statusFilter === "To do") return !isRecorded && !group.coveredByPicos;
+        if (statusFilter === "Recorded") return isRecorded;
+        if (statusFilter === "Covered") return group.coveredByPicos;
+        return true;
+      });
+  }, [displayGroups, listDisplayTypeFilter, listLocationFilter, optimizeDisplayOutcomes, statusFilter]);
+
+  useEffect(() => {
+    if (!displayGroups.length) {
+      setSelectedGroupId("");
+      return;
+    }
+    if (!displayGroups.some(group => group.id === selectedGroupId)) {
+      setSelectedGroupId(displayGroups[0].id);
+    }
+  }, [displayGroups, selectedGroupId]);
 
   const handleDisplayTypeChange = (nextDisplayType: string) => {
-    const nextLocations = dedupeByNormalized(
-      displayGroups
-        .filter(group => group.displayType === nextDisplayType)
-        .map(group => group.location)
-    ).sort();
-    setDisplayType(nextDisplayType);
-    setLocation(nextLocations[0] || "");
+    const nextGroup = displayGroups.find(group => group.displayType === nextDisplayType);
+    if (nextGroup) setSelectedGroupId(nextGroup.id);
+  };
+
+  const handleLocationChange = (nextLocation: string) => {
+    const nextGroup = displayGroups.find(group => group.displayType === displayType && group.location === nextLocation)
+      || displayGroups.find(group => group.location === nextLocation);
+    if (nextGroup) setSelectedGroupId(nextGroup.id);
   };
 
   const handleSelectGroup = (group: DisplayGroup) => {
-    setDisplayType(group.displayType);
-    setLocation(group.location);
+    setSelectedGroupId(group.id);
     setView("TOP_PACKS");
+  };
+
+  const handleConfirmSelectedGroup = () => {
+    if (!selectedGroup || optimizeDisplayOutcomes[selectedGroup.id]) return;
+    onConfirmDisplay({
+      liftPct: selectedGroup.bestLiftPct,
+      opportunityUnits: selectedGroup.totalUnits
+    }, selectedGroup.id);
   };
 
   const goBack = () => {
@@ -251,7 +347,7 @@ export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayP
                   label="Location"
                   value={location}
                   options={locationOptions}
-                  onChange={setLocation}
+                  onChange={handleLocationChange}
                 />
                 <SelectField
                   label="Type of Display"
@@ -279,7 +375,7 @@ export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayP
               </div>
             </section>
           ) : view === "TOP_PACKS" && selectedGroup ? (
-            <section className="space-y-4">
+            <section className="space-y-4 pb-28">
               <div className="bg-white border border-slate-200 rounded shadow-xs p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
@@ -288,6 +384,18 @@ export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayP
                   <h2 className="text-2xl font-black text-slate-950 mt-1">
                     {selectedGroup.displayType} at {selectedGroup.location}
                   </h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {selectedGroup.coveredByPicos && (
+                      <span className="bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-1 text-[10px] font-bold uppercase font-mono">
+                        Covered by PicOS
+                      </span>
+                    )}
+                    {optimizeDisplayOutcomes[selectedGroup.id] && (
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-2 py-1 text-[10px] font-bold uppercase font-mono">
+                        Recorded {formatOutcomeTimestamp(optimizeDisplayOutcomes[selectedGroup.id])}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[10px] font-mono min-w-[230px]">
                   <div className="rounded border border-emerald-100 bg-emerald-50 px-3 py-2">
@@ -329,6 +437,28 @@ export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayP
                   Whole List
                 </button>
               </div>
+
+              <div className="sticky bottom-0 z-20 -mx-6 px-6 pt-3 pb-4 bg-[#F8FAFC]/95 backdrop-blur border-t border-slate-200">
+                <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="text-xs text-slate-600">
+                    {optimizeDisplayOutcomes[selectedGroup.id]
+                      ? `Display optimization recorded ${formatOutcomeTimestamp(optimizeDisplayOutcomes[selectedGroup.id])}.`
+                      : "Record this display once you have reviewed the packs for the current display."}
+                  </div>
+                  <button
+                    disabled={Boolean(optimizeDisplayOutcomes[selectedGroup.id])}
+                    onClick={handleConfirmSelectedGroup}
+                    className={`font-bold py-3 px-5 rounded text-xs uppercase tracking-wider font-mono flex items-center justify-center gap-2 shrink-0 ${
+                      optimizeDisplayOutcomes[selectedGroup.id]
+                        ? "bg-slate-200 text-slate-500 cursor-not-allowed"
+                        : "bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                    }`}
+                  >
+                    {optimizeDisplayOutcomes[selectedGroup.id] ? "Recorded" : "Record Outcome"}
+                    {!optimizeDisplayOutcomes[selectedGroup.id] && <Check className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
             </section>
           ) : (
             <section className="space-y-4">
@@ -347,19 +477,67 @@ export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayP
                 </button>
               </div>
 
+              <section className="bg-white border border-slate-200 rounded shadow-xs p-4">
+                <div className="flex items-center gap-2 text-slate-500 mb-4">
+                  <Filter className="h-4 w-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Filters</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <SelectField
+                    label="Location"
+                    value={listLocationFilter}
+                    options={listLocationOptions}
+                    onChange={setListLocationFilter}
+                  />
+                  <SelectField
+                    label="Type of Display"
+                    value={listDisplayTypeFilter}
+                    options={listDisplayTypeOptions}
+                    onChange={setListDisplayTypeFilter}
+                  />
+                  <SelectField
+                    label="Status"
+                    value={statusFilter}
+                    options={["All", "To do", "Recorded", "Covered"]}
+                    onChange={value => setStatusFilter(value as StatusFilter)}
+                  />
+                </div>
+              </section>
+
+              {filteredDisplayGroups.length === 0 ? (
+                <section className="bg-white border border-slate-200 rounded shadow-xs p-8 text-center">
+                  <h3 className="font-bold text-slate-950">No displays match these filters.</h3>
+                  <p className="text-sm text-slate-500 mt-2">Clear a filter or show covered/recorded displays.</p>
+                </section>
+              ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {displayGroups.map(group => (
+                {filteredDisplayGroups.map(group => {
+                  const recordedAt = optimizeDisplayOutcomes[group.id];
+                  const isRecorded = Boolean(recordedAt);
+                  return (
                   <section key={group.id} className="bg-white border border-slate-200 rounded shadow-xs p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                          {group.displayType}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                            {group.displayType}
+                          </span>
+                          {group.coveredByPicos && (
+                            <span className="bg-amber-50 text-amber-800 border border-amber-200 rounded px-2 py-0.5 text-[9px] font-bold uppercase font-mono">
+                              Covered
+                            </span>
+                          )}
+                          {isRecorded && (
+                            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-2 py-0.5 text-[9px] font-bold uppercase font-mono">
+                              Recorded
+                            </span>
+                          )}
+                        </div>
                         <h3 className="text-lg font-black text-slate-950 mt-1 leading-tight">
                           {group.location}
                         </h3>
                         <p className="text-xs text-slate-500 mt-1 truncate">
-                          Top pack: {group.topPacks[0]?.sku}
+                          {isRecorded ? `Recorded ${formatOutcomeTimestamp(recordedAt)}` : `Top pack: ${group.topPacks[0]?.sku}`}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
@@ -376,8 +554,10 @@ export default function OptimizeDisplay({ store, onBackToHub }: OptimizeDisplayP
                       View Top Packs <ArrowRight className="h-4 w-4" />
                     </button>
                   </section>
-                ))}
+                );
+                })}
               </div>
+              )}
             </section>
           )}
         </div>

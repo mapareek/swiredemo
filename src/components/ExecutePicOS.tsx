@@ -48,7 +48,8 @@ const fallbackPoiTypes = [
   "Cooler",
   "Display",
   "Shipper",
-  "Rack"
+  "Rack",
+  "Shelf"
 ];
 
 type LocationConstraint = {
@@ -574,7 +575,7 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
       casesNeeded: topCandidate
         ? `Facings: ${topCandidate.facings}; Current: ${topCandidate.predictedCurrent}; Ideal: ${topCandidate.predictedIdeal}; Unit lift: ${topCandidate.opportunityUnits}; Lift pct: ${topCandidate.liftPct}%`
         : box.verificationScale,
-      pages: `${box.sourceFile} / ${box.sourcePages}`,
+      pages: box.sourcePages || "",
       mode: box.mode,
       displayType: topCandidate?.displayType || box.displayType,
       locationCategory: topCandidate?.location || box.location,
@@ -582,7 +583,6 @@ export function directivesForStore(store: StoreInfo): OnAdDirective[] {
       sourceImage: box.sourceImage,
       recommendationImage: recommendationImagePath(store.id, box.activity, originalActivityIndex),
       support: box.support,
-      confidencePct: box.confidencePct,
       sourceBox: box.box,
       stackRank,
       bestLiftPct: bestLiftPctForSource(box, box.optimizationCandidates, skuConstraints),

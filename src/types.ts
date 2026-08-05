@@ -31,9 +31,9 @@ export interface StoreInfo {
   manager: {
     name: string;
     avatar: string;
-    phone: string;
   };
   picosBoxes: PicOSActivityBox[];
+  displayOpportunities?: DisplayOpportunity[];
 }
 
 export interface StoreDemographics {
@@ -64,7 +64,7 @@ export interface HuntConstraints {
   priority: "Volume" | "Margin" | "Velocity";
 }
 
-export type OptimizeDisplayType = "Cooler" | "Display" | "Shipper" | "Rack";
+export type OptimizeDisplayType = "Cooler" | "Display" | "Shipper" | "Rack" | "Shelf";
 
 export interface PicOSConstraints {
   directiveId: string; // "OnAd-1" to "OnAd-6"
@@ -133,7 +133,6 @@ export interface OnAdDirective {
   sourceImage?: string;
   recommendationImage?: string;
   support?: string;
-  confidencePct?: number;
   lockedSkus?: string[];
   optimizationCandidates?: PicOSOptimizationCandidate[];
   sourceBox?: string;
@@ -157,10 +156,11 @@ export interface PicOSOptimizationCandidate {
   opportunityUnits: number;
   liftPct: number;
   rank: number;
-  matchScore: number;
-  isTypeValid: boolean;
-  sublocTier: string;
-  sourceFile: string;
+  shelfRank?: number;
+  matchScore?: number;
+  isTypeValid?: boolean;
+  sublocTier?: string;
+  sourceFile?: string;
 }
 
 export interface PicOSActivityBox {
@@ -169,7 +169,6 @@ export interface PicOSActivityBox {
   mode: "Execute" | "Sell";
   activity: string;
   onAd: string;
-  confidencePct: number;
   support: string;
   window: string;
   displayType: string;
@@ -181,11 +180,24 @@ export interface PicOSActivityBox {
   skusStated: string;
   executionDetail: string;
   verificationScale: string;
-  sourcePages: string;
+  sourcePages?: string;
   sourceImage?: string;
   optimizationNote: string;
-  sourceFile: string;
+  sourceFile?: string;
   optimizationCandidates?: PicOSOptimizationCandidate[];
+}
+
+export interface DisplayOpportunity {
+  id: string;
+  storeId: string;
+  location: string;
+  displayType: string;
+  coveredByPicos: boolean;
+  totalOpportunityUnits: number;
+  bestLiftPct: number;
+  status: "Open" | "Confirmed" | "Covered" | string;
+  packRecommendations: PicOSOptimizationCandidate[];
+  confirmedAt?: string;
 }
 
 export const ON_AD_DIRECTIVES: OnAdDirective[] = [

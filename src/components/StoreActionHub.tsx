@@ -13,7 +13,8 @@ export default function StoreActionHub({ store, onBackToSelector, onNavigate, on
   const executeCount = store.picosBoxes.filter(box => box.mode === "Execute").length;
   const sellCount = store.picosBoxes.filter(box => box.mode === "Sell").length;
   const activityCount = store.picosBoxes.length;
-  const opportunityCount = store.picosBoxes.reduce((sum, box) => sum + (box.optimizationCandidates?.length || 0), 0);
+  const opportunityCount = store.displayOpportunities?.length
+    ?? store.picosBoxes.reduce((sum, box) => sum + (box.optimizationCandidates?.length || 0), 0);
   const managerLabel = store.manager.name && store.manager.name !== "Store Manager"
     ? `${store.manager.name} · Store Manager`
     : "Store Manager";
